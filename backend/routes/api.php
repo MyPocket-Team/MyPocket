@@ -1,0 +1,76 @@
+<?php
+
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\AudioController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AuthGoogleController;
+use App\Http\Controllers\Api\CategorieController;
+use App\Http\Controllers\Api\ChatbotController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PlanningController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReceiptController;
+use App\Http\Controllers\Api\TransactionController;
+use Illuminate\Support\Facades\Route;
+
+// Routes publiques
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']); // même endpoint pour user et super_admin
+Route::post('/login/google', [AuthGoogleController::class, 'login']);
+
+// Routes protégées (nécessitent un token Sanctum valide)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+
+    Route::get('/profil', [ProfileController::class, 'show']);
+    Route::post('/profil', [ProfileController::class, 'update']);
+
+    Route::get('/categories', [CategorieController::class, 'index']);
+    Route::post('/categories', [CategorieController::class, 'store']);
+    Route::delete('/categories/{categorie}', [CategorieController::class, 'destroy']);
+
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::post('/transactions', [TransactionController::class, 'store']);
+    Route::get('/transactions/{transaction}', [TransactionController::class, 'show']);
+    Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy']);
+
+    Route::get('/plannings', [PlanningController::class, 'index']);
+    Route::post('/plannings', [PlanningController::class, 'store']);
+    Route::get('/plannings/{planning}', [PlanningController::class, 'show']);
+    Route::post('/plannings/{planning}/lier', [PlanningController::class, 'link']);
+    Route::post('/plannings/{planning}/annuler', [PlanningController::class, 'annuler']);
+    Route::delete('/plannings/{planning}', [PlanningController::class, 'destroy']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/compteur', [NotificationController::class, 'compteurNonLues']);
+    Route::post('/notifications/{notification}/lue', [NotificationController::class, 'marquerCommeLue']);
+    Route::post('/notifications/tout-marquer-lu', [NotificationController::class, 'toutMarquerCommeLu']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+
+    Route::get('/dashboard/overview', [DashboardController::class, 'overview']);
+    Route::get('/dashboard/evolution-solde', [DashboardController::class, 'evolutionSolde']);
+    Route::get('/dashboard/repartition-categories', [DashboardController::class, 'repartitionParCategorie']);
+    Route::get('/dashboard/comparaison-mensuelle', [DashboardController::class, 'comparaisonMensuelle']);
+
+    Route::post('/recus/upload', [ReceiptController::class, 'upload']);
+    Route::get('/recus/{traitementId}/statut', [ReceiptController::class, 'statut']);
+
+    Route::post('/audios/upload', [AudioController::class, 'upload']);
+    Route::get('/audios/{traitementId}/statut', [AudioController::class, 'statut']);
+
+    Route::get('/chatbot/messages', [ChatbotController::class, 'index']);
+    Route::post('/chatbot/messages', [ChatbotController::class, 'store']);
+
+    // --- Routes Super Admin ---
+    Route::middleware('super_admin')->prefix('admin')->group(function () {
+        Route::get('/dashboard/overview', [AdminDashboardController::class, 'overview']);
+
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::get('/users/{user}', [AdminUserController::class, 'show']);
+        Route::patch('/users/{user}/statut', [AdminUserController::class, 'updateStatus']);
+        Route::delete('/users/{user}', [AdminUserController::class, 'destroy']);
+    });
+});
