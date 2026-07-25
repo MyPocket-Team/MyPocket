@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://my-pocket-bf59zm46d-assogba-joels-projects.vercel.app'],
+    'allowed_origins' => ['https://my-pocket-teal.vercel.app'],
 
     'allowed_origins_patterns' => [],
 
