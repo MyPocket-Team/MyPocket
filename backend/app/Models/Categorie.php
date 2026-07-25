@@ -14,7 +14,6 @@ class Categorie extends Model
     protected $fillable = [
         'user_id',
         'nom',
-        'type',
         'icone',
     ];
 

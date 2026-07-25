@@ -18,7 +18,7 @@ return new class extends Migration
             $table->decimal('solde_avant', 15, 2);
             $table->decimal('solde_apres', 15, 2);
             $table->enum('type', ['revenu', 'depense']);
-            $table->enum('source', ['manuel', 'ia_recu', 'ia_audio'])->default('manuel');
+            $table->enum('source', ['manuel', 'ia_recu', 'ia_audio','texte', ])->default('manuel');
             $table->timestamps();
         });
     }

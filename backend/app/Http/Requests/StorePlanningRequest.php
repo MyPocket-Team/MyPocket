@@ -15,17 +15,14 @@ class StorePlanningRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'categorie_id' => [
-                'nullable',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id)
-                        ->orWhereNull('user_id');
-                }),
-            ],
+            'categorie_id' => ['nullable', Rule::exists('categories', 'id')->where(function ($query) {
+                $query->where('user_id', $this->user()->id)
+                    ->orWhereNull('user_id');
+            })],
+            'nouvelle_categorie' => ['nullable', 'string', 'max:255'],
             'titre' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
-            'montant_prevu' => ['required', 'numeric', 'min:0.01'],
-            'date_prevue' => ['required', 'date'],
+            'date_prevue' => ['nullable', 'date'],
         ];
     }
 }

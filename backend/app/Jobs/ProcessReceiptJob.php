@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Notification;
+use App\Models\TraitementTranscription;
 use App\Models\User;
 use App\Services\GeminiService;
 use Illuminate\Bus\Queueable;
@@ -10,7 +11,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -31,7 +31,9 @@ class ProcessReceiptJob implements ShouldQueue
 
     public function handle(GeminiService $gemini): void
     {
-        $cacheKey = "traitement_recu:{$this->traitementId}";
+        $traitement = TraitementTranscription::where('uuid', $this->traitementId)
+            ->where('type', 'recu')
+            ->first();
 
         try {
             $contenu = Storage::disk('local')->get($this->cheminFichier);
@@ -40,24 +42,25 @@ class ProcessReceiptJob implements ShouldQueue
 
             $donnees = $gemini->extraireDonneesRecu($base64, $mimeType);
 
-            Cache::put($cacheKey, [
-                'statut' => 'termine',
-                'donnees' => $donnees,
-            ], now()->addMinutes(30));
+            if ($traitement) {
+                $traitement->update([
+                    'status' => 'termine',
+                    'data' => $donnees,
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('Échec du traitement du reçu', [
                 'user_id' => $this->user->id,
                 'erreur' => $e->getMessage(),
             ]);
 
-            Cache::put($cacheKey, [
-                'statut' => 'echec',
-                'message' => "L'analyse du reçu a échoué. Vous pouvez réessayer ou saisir manuellement.",
-            ], now()->addMinutes(30));
+            if ($traitement) {
+                $traitement->update([
+                    'status' => 'echec',
+                    'message' => "L'analyse du reçu a échoué. Vous pouvez réessayer ou saisir manuellement.",
+                ]);
+            }
         } finally {
-            // Le fichier brut est toujours supprimé après tentative d'extraction,
-            // conformément à la politique de confidentialité (sauf option de conservation
-            // activée par l'utilisateur, à gérer au niveau du controller appelant).
             Storage::disk('local')->delete($this->cheminFichier);
         }
     }

@@ -8,13 +8,14 @@ use App\Http\Requests\StorePlanningRequest;
 use App\Http\Resources\PlanningResource;
 use App\Models\Planning;
 use App\Models\Transaction;
+use App\Models\Categorie;
 use Illuminate\Http\Request;
 
 class PlanningController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Planning::with(['categorie', 'transaction'])
+        $query = Planning::with(['transaction'])
             ->where('user_id', $request->user()->id);
 
         if ($request->filled('statut')) {
@@ -22,7 +23,7 @@ class PlanningController extends Controller
         }
 
         $plannings = $query
-            ->orderBy('date_prevue')
+            ->orderBy('created_at', 'desc')
             ->paginate($request->input('per_page', 20));
 
         return PlanningResource::collection($plannings);
@@ -30,13 +31,23 @@ class PlanningController extends Controller
 
     public function store(StorePlanningRequest $request)
     {
+        $data = $request->validated();
+
+        if ($request->filled('nouvelle_categorie')) {
+            $categorie = Categorie::create([
+                'nom' => $request->input('nouvelle_categorie'),
+                'user_id' => $request->user()->id,
+            ]);
+            $data['categorie_id'] = $categorie->id;
+        }
+
         $planning = Planning::create([
-            ...$request->validated(),
+            ...$data,
             'user_id' => $request->user()->id,
             'statut' => 'en_attente',
         ]);
 
-        $planning->load('categorie');
+        $planning->load('transaction');
 
         return response()->json([
             'message' => 'Planning créé avec succès.',
@@ -52,7 +63,7 @@ class PlanningController extends Controller
             ], 403);
         }
 
-        $planning->load(['categorie', 'transaction']);
+        $planning->load(['transaction']);
 
         return new PlanningResource($planning);
     }
@@ -78,7 +89,7 @@ class PlanningController extends Controller
         $transaction = Transaction::findOrFail($request->validated('transaction_id'));
 
         $planning->lierATransaction($transaction);
-        $planning->load(['categorie', 'transaction']);
+        $planning->load(['transaction']);
 
         return response()->json([
             'message' => 'Planning lié à la transaction avec succès.',
@@ -101,6 +112,33 @@ class PlanningController extends Controller
 
         return response()->json([
             'message' => 'Planning annulé avec succès.',
+        ]);
+    }
+
+    public function update(StorePlanningRequest $request, Planning $planning)
+    {
+        if ($planning->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Action non autorisée.',
+            ], 403);
+        }
+
+        $data = $request->validated();
+
+        if ($request->filled('nouvelle_categorie')) {
+            $categorie = Categorie::create([
+                'nom' => $request->input('nouvelle_categorie'),
+                'user_id' => $request->user()->id,
+            ]);
+            $data['categorie_id'] = $categorie->id;
+        }
+
+        $planning->update($data);
+        $planning->load('transaction');
+
+        return response()->json([
+            'message' => 'Planning mis à jour avec succès.',
+            'planning' => new PlanningResource($planning),
         ]);
     }
 

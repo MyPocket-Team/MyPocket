@@ -12,7 +12,10 @@ class Notification extends Model
     protected $fillable = [
         'user_id',
         'planning_id',
+        'planned_transaction_id',
+        'milestone',
         'type',
+        'titre',
         'motif',
         'lue',
         'date_envoi',
@@ -35,6 +38,11 @@ class Notification extends Model
     public function planning()
     {
         return $this->belongsTo(Planning::class);
+    }
+
+    public function plannedTransaction()
+    {
+        return $this->belongsTo(PlannedTransaction::class);
     }
 
     // Scopes

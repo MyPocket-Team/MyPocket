@@ -16,7 +16,8 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'categorie_id' => [
-                'required',
+                'nullable',
+                'required_without:nouvelle_categorie',
                 Rule::exists('categories', 'id')->where(function ($query) {
                     $query->where('user_id', $this->user()->id)
                         ->orWhereNull('user_id');
@@ -27,6 +28,7 @@ class StoreTransactionRequest extends FormRequest
             'date_transaction' => ['required', 'date'],
             'type' => ['required', 'in:revenu,depense'],
             'source' => ['nullable', 'in:manuel,ia_recu,ia_audio'],
+            'nouvelle_categorie' => ['nullable', 'string', 'max:255'],
         ];
     }
 

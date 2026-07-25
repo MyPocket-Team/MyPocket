@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Transaction;
+use App\Models\User;
 use App\Services\NotificationService;
 
 class TransactionObserver
@@ -12,51 +13,108 @@ class TransactionObserver
     ) {
     }
 
-    /**
-     * Avant la création : calcule solde_avant / solde_apres
-     * en fonction du solde_actuel de l'utilisateur au moment T.
-     */
     public function creating(Transaction $transaction): void
     {
-        $user = $transaction->user;
-
-        $soldeAvant = $user->solde_actuel;
-
-        $soldeApres = $transaction->type === 'revenu'
-            ? $soldeAvant + $transaction->montant
-            : $soldeAvant - $transaction->montant;
+        $precedente = $this->getPrecedente($transaction);
+        $soldeAvant = $precedente
+            ? $precedente->solde_apres
+            : $transaction->user->solde_initial;
 
         $transaction->solde_avant = $soldeAvant;
-        $transaction->solde_apres = $soldeApres;
+        $transaction->solde_apres = $transaction->type === 'revenu'
+            ? $soldeAvant + $transaction->montant
+            : $soldeAvant - $transaction->montant;
     }
 
-    /**
-     * Après la création : met à jour le solde_actuel du user
-     * et déclenche l'alerte si le seuil bas est atteint.
-     */
     public function created(Transaction $transaction): void
     {
-        $user = $transaction->user;
-
-        $user->update(['solde_actuel' => $transaction->solde_apres]);
-
-        if ($user->fresh()->seuilBasAtteint()) {
-            $this->notificationService->alerteSeuilBas($user);
-        }
+        $this->recalculerChaines($transaction->user);
     }
 
-    /**
-     * Si une transaction est supprimée, on recrédite/débite le solde
-     * pour rester cohérent (cas: erreur de saisie supprimée par l'utilisateur).
-     */
+    public function updating(Transaction $transaction): void
+    {
+        // Rien à stocker localement ici : on recalculera la chaîne complète après la mise à jour.
+    }
+
+    public function updated(Transaction $transaction): void
+    {
+        $this->recalculerChaines($transaction->user);
+    }
+
     public function deleted(Transaction $transaction): void
     {
-        $user = $transaction->user;
+        $this->recalculerChaines($transaction->user);
+    }
 
-        $ajustement = $transaction->type === 'revenu'
-            ? -$transaction->montant
-            : $transaction->montant;
+    protected function getPrecedente(Transaction $transaction): ?Transaction
+    {
+        return Transaction::where('user_id', $transaction->user_id)
+            ->where(function ($query) use ($transaction) {
+                $query->where('date_transaction', '<', $transaction->date_transaction)
+                    ->orWhere(function ($query) use ($transaction) {
+                        $query->where('date_transaction', $transaction->date_transaction)
+                            ->when($transaction->id, function ($query) use ($transaction) {
+                                $query->where('id', '<', $transaction->id);
+                            });
+                    });
+            })
+            ->orderByDesc('date_transaction')
+            ->orderByDesc('id')
+            ->first();
+    }
 
-        $user->update(['solde_actuel' => $user->solde_actuel + $ajustement]);
+    protected function recalculerChaines(User $user): void
+    {
+        $transactions = $user->transactions()
+            ->orderBy('date_transaction')
+            ->orderBy('id')
+            ->get();
+
+        $solde = $user->solde_initial;
+
+        Transaction::withoutEvents(function () use ($transactions, &$solde) {
+            foreach ($transactions as $transaction) {
+                $soldeAvant = $solde;
+                $soldeApres = $transaction->type === 'revenu'
+                    ? $soldeAvant + $transaction->montant
+                    : $soldeAvant - $transaction->montant;
+
+                $transaction->update([
+                    'solde_avant' => $soldeAvant,
+                    'solde_apres' => $soldeApres,
+                ]);
+
+                $solde = $soldeApres;
+            }
+        });
+
+        $user->update(['solde_actuel' => $solde]);
+
+        $this->verifierSeuilAlerte($user->fresh());
+    }
+
+    protected function verifierSeuilAlerte(User $user): void
+    {
+        if ($user->solde_initial <= 0) {
+            return;
+        }
+
+        $seuilMontant = $user->solde_initial * ($user->seuil_alerte / 100);
+
+        // Solde encore au-dessus du seuil : rien à signaler.
+        if ($user->solde_actuel > $seuilMontant) {
+            return;
+        }
+
+        // Évite de spammer une notification à chaque transaction tant que
+        // l'utilisateur n'a pas encore lu la précédente alerte de seuil bas.
+        $dejaAlerte = $user->notifications()
+            ->where('type', 'seuil_bas')
+            ->where('lue', false)
+            ->exists();
+
+        if (! $dejaAlerte) {
+            $this->notificationService->alerteSeuilBas($user);
+        }
     }
 }

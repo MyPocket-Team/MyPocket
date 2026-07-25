@@ -17,7 +17,6 @@ class CategorieController extends Controller
     public function index(Request $request)
     {
         $categories = Categorie::visiblesPour($request->user()->id)
-            ->orderBy('type')
             ->orderBy('nom')
             ->get();
 

@@ -1,8 +1,9 @@
 <?php
 
-// Dans ton bootstrap/app.php existant, à l'intérieur de ->withMiddleware(function (Middleware $middleware) {...})
-// ajoute cette ligne pour créer l'alias 'super_admin' :
+// Ce fichier contient un snippet d'exemple pour configurer l'alias de middleware
+// dans bootstrap/app.php. Il n'est pas destiné à être exécuté tel quel.
 
+/*
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
 
 ->withMiddleware(function (Middleware $middleware) {
@@ -10,6 +11,7 @@ use App\Http\Middleware\EnsureUserIsSuperAdmin;
         'super_admin' => EnsureUserIsSuperAdmin::class,
     ]);
 })
+*/
 
 // Exemple de fichier bootstrap/app.php complet typique en Laravel 12 :
 

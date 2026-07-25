@@ -11,24 +11,24 @@ class CategorieSeeder extends Seeder
     {
         $categories = [
             // Dépenses
-            ['nom' => 'Alimentation', 'type' => 'depense', 'icone' => 'utensils'],
-            ['nom' => 'Transport', 'type' => 'depense', 'icone' => 'car'],
-            ['nom' => 'Logement', 'type' => 'depense', 'icone' => 'home'],
-            ['nom' => 'Santé', 'type' => 'depense', 'icone' => 'heart-pulse'],
-            ['nom' => 'Éducation', 'type' => 'depense', 'icone' => 'book'],
-            ['nom' => 'Loisirs', 'type' => 'depense', 'icone' => 'gamepad'],
-            ['nom' => 'Vêtements', 'type' => 'depense', 'icone' => 'shirt'],
-            ['nom' => 'Factures & Abonnements', 'type' => 'depense', 'icone' => 'file-text'],
-            ['nom' => 'Communication (crédit, internet)', 'type' => 'depense', 'icone' => 'phone'],
-            ['nom' => 'Famille & Dons', 'type' => 'depense', 'icone' => 'users'],
-            ['nom' => 'Autres dépenses', 'type' => 'depense', 'icone' => 'more-horizontal'],
+            ['nom' => 'Alimentation', 'icone' => 'utensils'],
+            ['nom' => 'Transport', 'icone' => 'car'],
+            ['nom' => 'Logement', 'icone' => 'home'],
+            ['nom' => 'Santé', 'icone' => 'heart-pulse'],
+            ['nom' => 'Éducation', 'icone' => 'book'],
+            ['nom' => 'Loisirs', 'icone' => 'gamepad'],
+            ['nom' => 'Vêtements', 'icone' => 'shirt'],
+            ['nom' => 'Factures & Abonnements', 'icone' => 'file-text'],
+            ['nom' => 'Communication (crédit, internet)', 'icone' => 'phone'],
+            ['nom' => 'Famille & Dons', 'icone' => 'users'],
+            ['nom' => 'Autres dépenses', 'icone' => 'more-horizontal'],
 
             // Revenus
-            ['nom' => 'Salaire', 'type' => 'revenu', 'icone' => 'wallet'],
-            ['nom' => 'Business / Commerce', 'type' => 'revenu', 'icone' => 'store'],
-            ['nom' => 'Freelance / Prestation', 'type' => 'revenu', 'icone' => 'briefcase'],
-            ['nom' => 'Transfert reçu', 'type' => 'revenu', 'icone' => 'arrow-down-left'],
-            ['nom' => 'Autres revenus', 'type' => 'revenu', 'icone' => 'more-horizontal'],
+            ['nom' => 'Salaire', 'icone' => 'wallet'],
+            ['nom' => 'Business / Commerce', 'icone' => 'store'],
+            ['nom' => 'Freelance / Prestation', 'icone' => 'briefcase'],
+            ['nom' => 'Transfert reçu', 'icone' => 'arrow-down-left'],
+            ['nom' => 'Autres revenus', 'icone' => 'more-horizontal'],
         ];
 
         foreach ($categories as $categorie) {

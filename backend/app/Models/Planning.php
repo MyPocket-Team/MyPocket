@@ -11,21 +11,16 @@ class Planning extends Model
 
     protected $fillable = [
         'user_id',
-        'categorie_id',
         'transaction_id',
         'titre',
         'description',
-        'montant_prevu',
         'date_prevue',
         'statut',
     ];
 
     protected function casts(): array
     {
-        return [
-            'date_prevue' => 'datetime',
-            'montant_prevu' => 'decimal:2',
-        ];
+        return [];
     }
 
     // Relations
@@ -34,11 +29,7 @@ class Planning extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function categorie()
-    {
-        return $this->belongsTo(Categorie::class);
-    }
-
+   
     public function transaction()
     {
         return $this->belongsTo(Transaction::class);
@@ -48,6 +39,12 @@ class Planning extends Model
     {
         return $this->hasMany(Notification::class);
     }
+
+    public function plannedTransactions()
+    {
+        return $this->hasMany(PlannedTransaction::class);
+    }
+
 
     // Scopes
     public function scopeEnAttente($query)

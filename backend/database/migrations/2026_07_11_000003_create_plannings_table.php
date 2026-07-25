@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('plannings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('categorie_id')->nullable()->constrained('categories')->nullOnDelete();
             $table->foreignId('transaction_id')->nullable()->constrained('transactions')->nullOnDelete();
             $table->string('titre');
             $table->string('description')->nullable();

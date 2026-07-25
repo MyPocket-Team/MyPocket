@@ -11,11 +11,9 @@ class PlanningResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'categorie' => new CategorieResource($this->whenLoaded('categorie')),
             'transaction' => new TransactionResource($this->whenLoaded('transaction')),
             'titre' => $this->titre,
             'description' => $this->description,
-            'montant_prevu' => $this->montant_prevu,
             'date_prevue' => $this->date_prevue,
             'statut' => $this->statut,
             'created_at' => $this->created_at,

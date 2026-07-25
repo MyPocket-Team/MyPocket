@@ -1,0 +1,26 @@
+# Sécurité : ne jamais committer de secrets, peu importe le sous-dossier
+.env
+.env.*
+!.env.example
+!*.env.example
+
+# Dépendances
+**/node_modules/
+**/vendor/
+
+# Build
+**/dist/
+**/public/build/
+**/public/hot/
+
+# Logs & cache Laravel
+backend/storage/logs/*
+!backend/storage/logs/.gitignore
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/bootstrap/cache/*.php
+
+# OS
+.DS_Store
+Thumbs.db

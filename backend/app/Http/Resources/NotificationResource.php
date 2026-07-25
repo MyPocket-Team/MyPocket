@@ -11,6 +11,7 @@ class NotificationResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'titre' => $this->titre,
             'planning' => new PlanningResource($this->whenLoaded('planning')),
             'type' => $this->type,
             'motif' => $this->motif,

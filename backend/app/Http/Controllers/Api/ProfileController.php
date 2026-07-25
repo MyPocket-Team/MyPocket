@@ -19,6 +19,8 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
+        $soldeInitialModifie = isset($data['solde_initial']) && $data['solde_initial'] != $user->solde_initial;
+
         if ($request->hasFile('photo')) {
             // Supprime l'ancienne photo si elle existe
             if ($user->photo) {
@@ -30,9 +32,38 @@ class ProfileController extends Controller
 
         $user->update($data);
 
-        // Considère le profil comme complet si les infos essentielles sont là
-        if (! $user->profil_complete && $user->nom && $user->activite) {
-            $user->update(['profil_complete' => true]);
+        if ($soldeInitialModifie) {
+            $solde = (float) $data['solde_initial'];
+            $transactions = $user->transactions()
+                ->orderBy('date_transaction')
+                ->orderBy('id')
+                ->get();
+
+            \App\Models\Transaction::withoutEvents(function () use ($transactions, &$solde) {
+                foreach ($transactions as $transaction) {
+                    $soldeAvant = $solde;
+                    $soldeApres = $transaction->type === 'revenu'
+                        ? $soldeAvant + $transaction->montant
+                        : $soldeAvant - $transaction->montant;
+
+                    $transaction->update([
+                        'solde_avant' => $soldeAvant,
+                        'solde_apres' => $soldeApres,
+                    ]);
+
+                    $solde = $soldeApres;
+                }
+            });
+
+            $user->update([
+                'solde_actuel' => $solde,
+            ]);
+        }
+
+        // Recalcule dynamiquement le flag profil_complete
+        $profilComplet = (bool) ($user->nom && $user->activite);
+        if ($user->profil_complete !== $profilComplet) {
+            $user->update(['profil_complete' => $profilComplet]);
         }
 
         return response()->json([

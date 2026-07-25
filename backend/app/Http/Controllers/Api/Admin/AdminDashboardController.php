@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ChatbotMessage;
 use App\Models\Transaction;
+use App\Models\TraitementTranscription;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -12,7 +13,7 @@ class AdminDashboardController extends Controller
 {
     /**
      * Vue d'ensemble : nombre d'utilisateurs, volume de transactions,
-     * compteur de requêtes Gemini (approximé via nombre de transactions IA + messages chatbot).
+     * compteur de requêtes Gemini (reçus + audio + chatbot) et quota mensuel.
      */
     public function overview(Request $request)
     {
@@ -24,11 +25,27 @@ class AdminDashboardController extends Controller
             ->whereYear('date_transaction', now()->year)
             ->count();
 
-        // Approximation du quota Gemini : chaque transaction source IA = 1 appel,
-        // chaque message chatbot (user + assistant) = 1 appel.
-        $appelsGeminiRecusAudio = Transaction::whereIn('source', ['ia_recu', 'ia_audio'])->count();
-        $appelsGeminiChatbot = ChatbotMessage::count();
+        $debutMois = now()->startOfMonth();
+        $finMois = now()->endOfMonth();
+
+        // 1 appel Gemini par traitement reçu/audio (indépendamment du nombre de
+        // transactions extraites), et 1 appel Gemini par réponse assistant du chatbot
+        // (un échange = 1 message "user" + 1 message "assistant" pour 1 seul appel).
+        $appelsGeminiRecusAudio = TraitementTranscription::count();
+        $appelsGeminiRecusAudioMois = TraitementTranscription::whereBetween('created_at', [$debutMois, $finMois])->count();
+
+        $appelsGeminiChatbot = ChatbotMessage::where('role', 'assistant')->count();
+        $appelsGeminiChatbotMois = ChatbotMessage::where('role', 'assistant')
+            ->whereBetween('created_at', [$debutMois, $finMois])
+            ->count();
+
         $totalAppelsGemini = $appelsGeminiRecusAudio + $appelsGeminiChatbot;
+        $totalAppelsGeminiMois = $appelsGeminiRecusAudioMois + $appelsGeminiChatbotMois;
+
+        $quotaMensuel = (int) config('services.gemini.quota_mensuel');
+        $pourcentageQuotaUtilise = $quotaMensuel > 0
+            ? round(($totalAppelsGeminiMois / $quotaMensuel) * 100, 1)
+            : null;
 
         return response()->json([
             'utilisateurs' => [
@@ -44,6 +61,13 @@ class AdminDashboardController extends Controller
                 'appels_recus_audio' => $appelsGeminiRecusAudio,
                 'appels_chatbot' => $appelsGeminiChatbot,
                 'total_estime' => $totalAppelsGemini,
+                'ce_mois' => [
+                    'appels_recus_audio' => $appelsGeminiRecusAudioMois,
+                    'appels_chatbot' => $appelsGeminiChatbotMois,
+                    'total' => $totalAppelsGeminiMois,
+                    'quota' => $quotaMensuel,
+                    'pourcentage_utilise' => $pourcentageQuotaUtilise,
+                ],
             ],
         ]);
     }

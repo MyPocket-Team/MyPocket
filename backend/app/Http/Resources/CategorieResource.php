@@ -12,7 +12,6 @@ class CategorieResource extends JsonResource
         return [
             'id' => $this->id,
             'nom' => $this->nom,
-            'type' => $this->type,
             'icone' => $this->icone,
             'est_personnalisee' => ! is_null($this->user_id),
             'created_at' => $this->created_at,

@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Jobs\ProcessReceiptJob;
+use App\Models\TraitementTranscription;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ReceiptController extends Controller
@@ -23,7 +24,13 @@ class ReceiptController extends Controller
         $traitementId = (string) Str::uuid();
         $chemin = $request->file('photo')->store('recus_temporaires', 'local');
 
-        Cache::put("traitement_recu:{$traitementId}", ['statut' => 'en_cours'], now()->addMinutes(30));
+        TraitementTranscription::create([
+            'uuid' => $traitementId,
+            'user_id' => $request->user()->id,
+            'type' => 'recu',
+            'status' => 'en_cours',
+            'file_path' => $chemin,
+        ]);
 
         ProcessReceiptJob::dispatch($request->user(), $chemin, $traitementId);
 
@@ -38,14 +45,20 @@ class ReceiptController extends Controller
      */
     public function statut(Request $request, string $traitementId)
     {
-        $resultat = Cache::get("traitement_recu:{$traitementId}");
+        $traitement = TraitementTranscription::where('uuid', $traitementId)
+            ->where('user_id', $request->user()->id)
+            ->first();
 
-        if (! $resultat) {
+        if (! $traitement) {
             return response()->json([
-                'message' => 'Traitement introuvable ou expiré.',
+                'message' => 'Traitement introuvable.',
             ], 404);
         }
 
-        return response()->json($resultat);
+        return response()->json([
+            'status' => $traitement->status,
+            'data' => $traitement->data,
+            'message' => $traitement->message,
+        ]);
     }
 }

@@ -15,7 +15,6 @@ class StoreCategorieRequest extends FormRequest
     {
         return [
             'nom' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:revenu,depense'],
             'icone' => ['nullable', 'string', 'max:255'],
         ];
     }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChatbotMessageRequest;
+use App\Http\Resources\ChatbotConversationResource;
 use App\Http\Resources\ChatbotMessageResource;
+use App\Models\ChatbotConversation;
 use App\Models\ChatbotMessage;
 use App\Models\Transaction;
 use App\Services\GeminiService;
@@ -12,11 +14,48 @@ use Illuminate\Http\Request;
 
 class ChatbotController extends Controller
 {
-    public function index(Request $request)
+    public function conversations(Request $request)
     {
-        $messages = ChatbotMessage::where('user_id', $request->user()->id)
-            ->orderBy('created_at')
+        $conversations = ChatbotConversation::where('user_id', $request->user()->id)
+            ->with('dernierMessage')
+            ->orderByDesc('updated_at')
             ->get();
+
+        return ChatbotConversationResource::collection($conversations);
+    }
+
+    public function storeConversation(Request $request)
+    {
+        $conversation = ChatbotConversation::create([
+            'user_id' => $request->user()->id,
+            'titre' => 'Nouvelle discussion',
+        ]);
+
+        return new ChatbotConversationResource($conversation->load('dernierMessage'));
+    }
+
+    public function destroyConversation(Request $request, ChatbotConversation $conversation)
+    {
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Action non autorisée.',
+            ], 403);
+        }
+
+        $conversation->delete();
+
+        return response()->json(['message' => 'Discussion supprimée.']);
+    }
+
+    public function index(Request $request, ChatbotConversation $conversation)
+    {
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => 'Action non autorisée.',
+            ], 403);
+        }
+
+        $messages = $conversation->messages()->orderBy('created_at')->get();
 
         return ChatbotMessageResource::collection($messages);
     }
@@ -25,15 +64,28 @@ class ChatbotController extends Controller
     {
         $user = $request->user();
 
+        $conversation = ChatbotConversation::where('id', $request->validated('conversation_id'))
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
         // Sauvegarde le message de l'utilisateur
         $messageUser = ChatbotMessage::create([
             'user_id' => $user->id,
+            'conversation_id' => $conversation->id,
             'role' => 'user',
             'contenu' => $request->validated('message'),
         ]);
 
-        // Construit l'historique (limité aux 20 derniers messages pour rester léger)
-        $historique = ChatbotMessage::where('user_id', $user->id)
+        // Titre auto sur le premier message : reprend le début du message
+        // pour remplacer le titre générique "Nouvelle discussion".
+        if ($conversation->titre === 'Nouvelle discussion') {
+            $conversation->titre = str($request->validated('message'))->limit(40);
+        }
+        $conversation->touch();
+        $conversation->save();
+
+        // Construit l'historique (limité aux 20 derniers messages de CETTE discussion)
+        $historique = $conversation->messages()
             ->orderBy('created_at')
             ->limit(20)
             ->get()
@@ -49,11 +101,13 @@ class ChatbotController extends Controller
 
         $messageAssistant = ChatbotMessage::create([
             'user_id' => $user->id,
+            'conversation_id' => $conversation->id,
             'role' => 'assistant',
             'contenu' => $reponseTexte,
         ]);
 
         return response()->json([
+            'conversation' => new ChatbotConversationResource($conversation),
             'message_utilisateur' => new ChatbotMessageResource($messageUser),
             'reponse' => new ChatbotMessageResource($messageAssistant),
         ], 201);
@@ -91,6 +145,7 @@ class ChatbotController extends Controller
             ->toArray();
 
         return [
+            'devise' => 'FCFA',
             'solde_actuel' => $user->solde_actuel,
             'solde_initial' => $user->solde_initial,
             'total_revenus_ce_mois' => $totalRevenusMois,

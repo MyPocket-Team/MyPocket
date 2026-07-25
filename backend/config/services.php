@@ -38,10 +38,15 @@ return [
     'gemini' => [
     'api_key' => env('GEMINI_API_KEY'),
     'model' => env('GEMINI_MODEL', 'gemini-2.5-flash-lite'),
+    'quota_mensuel' => env('GEMINI_QUOTA_MENSUEL', 1000),
     ],
     
     'google' => [
     'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
+    'ffmpeg' => [
+        'binary' => env('FFMPEG_BINARY', 'ffmpeg'),
     ],
 
 

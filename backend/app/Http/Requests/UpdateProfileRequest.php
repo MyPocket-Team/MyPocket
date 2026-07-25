@@ -20,6 +20,7 @@ class UpdateProfileRequest extends FormRequest
             'activite' => ['sometimes', 'nullable', 'string', 'max:255'],
             'seuil_alerte' => ['sometimes', 'numeric', 'min:1', 'max:100'],
             'photo' => ['sometimes', 'nullable', 'image', 'max:4096'], // 4 Mo max
+            'solde_initial' => ['sometimes', 'numeric', 'min:0'],
         ];
     }
 }

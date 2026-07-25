@@ -15,6 +15,7 @@ class StoreChatbotMessageRequest extends FormRequest
     {
         return [
             'message' => ['required', 'string', 'max:1000'],
+            'conversation_id' => ['required', 'integer', 'exists:chatbot_conversations,id'],
         ];
     }
 }

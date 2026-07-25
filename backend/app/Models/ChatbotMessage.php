@@ -11,9 +11,15 @@ class ChatbotMessage extends Model
 
     protected $fillable = [
         'user_id',
+        'conversation_id',
         'role',
         'contenu',
     ];
+
+    public function conversation()
+    {
+        return $this->belongsTo(ChatbotConversation::class, 'conversation_id');
+    }
 
     // Relations
     public function user()
