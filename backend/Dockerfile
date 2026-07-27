@@ -36,5 +36,5 @@ COPY --from=vendor /app/vendor/ /var/www/vendor/
 
 EXPOSE 8000
 
-# Démarrage avec le port dynamique requis par Render
-CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+# Démarrage avec la bonne interprétation du port dynamique de Render
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
