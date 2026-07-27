@@ -1,47 +1,21 @@
-# ==========================================
-# Étape 1 : Installation des dépendances avec Composer
-# ==========================================
-FROM composer:latest AS vendor
-WORKDIR /app
+FROM php:8.2-cli
 
-# Copie uniquement des fichiers de configuration Composer pour optimiser le cache Docker
-COPY composer.json composer.lock* ./
-
-# Installation propre, sans limite de mémoire et sans vérifier les extensions locales
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install \
-    --no-dev \
-    --optimize-autoloader \
-    --no-scripts \
-    --ignore-platform-reqs
-
-# ==========================================
-# Étape 2 : Image finale de l'application
-# ==========================================
-FROM php:8.2-fpm
-
-# Installation des dépendances système (incluant ffmpeg pour l'audio) et extensions PHP
+# Dépendances système + ffmpeg (indispensable pour le traitement audio IA)
 RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    zip \
-    unzip \
-    git \
-    ffmpeg \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    git curl zip unzip ffmpeg \
+    libpng-dev libonig-dev libxml2-dev libzip-dev default-mysql-client \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /var/www
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copie de tout le code source de l'application
+WORKDIR /app
 COPY . .
 
-# Injection du dossier vendor pré-compilé lors de l'Étape 1
-COPY --from=vendor /app/vendor/ /var/www/vendor/
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-scripts --ignore-platform-reqs --no-interaction
 
-# Exposition du port
+RUN php artisan config:clear
+
 EXPOSE 8000
 
-# Commande de démarrage du serveur Laravel
-CMD php artisan serve --host=0.0.0.0 --port=8000
+CMD php artisan migrate --force && php artisan storage:link --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
