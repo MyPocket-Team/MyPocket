@@ -1,25 +1,21 @@
-# ==========================================
-# Étape 1 : Installation des dépendances avec Composer
-# ==========================================
+# Étape 1 : Compilation des dépendances avec Composer
 FROM composer:latest AS vendor
 WORKDIR /app
 
-# Copie uniquement des fichiers de configuration Composer pour optimiser le cache Docker
+# Copie des fichiers de configuration
 COPY composer.json composer.lock* ./
 
-# Installation propre, sans limite de mémoire et sans vérifier les extensions locales
+# Installation en mode production pure
 RUN COMPOSER_MEMORY_LIMIT=-1 composer install \
     --no-dev \
     --optimize-autoloader \
     --no-scripts \
     --ignore-platform-reqs
 
-# ==========================================
 # Étape 2 : Image finale de l'application
-# ==========================================
 FROM php:8.2-fpm
 
-# Installation des dépendances système (incluant ffmpeg pour l'audio) et extensions PHP
+# Installation des dépendances système (ffmpeg compris)
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -34,14 +30,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /var/www
 
-# Copie de tout le code source de l'application
+# Copie du code source et des dépendances
 COPY . .
-
-# Injection du dossier vendor pré-compilé lors de l'Étape 1
 COPY --from=vendor /app/vendor/ /var/www/vendor/
 
-# Exposition du port
 EXPOSE 8000
 
-# Commande de démarrage du serveur Laravel avec le port dynamique pour Render
+# Démarrage avec le port dynamique requis par Render
 CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
