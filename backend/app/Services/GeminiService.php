@@ -17,7 +17,7 @@ class GeminiService
     public function __construct()
     {
         $this->apiKey = config('services.gemini.api_key');
-        $this->model = config('services.gemini.model', 'gemini-2.5-flash-lite');
+        $this->model = config('services.gemini.model', 'gemini-2.5-flash');
     }
 
     /**
@@ -26,8 +26,14 @@ class GeminiService
      */
     public function extraireDonneesRecu(string $imageBase64, string $mimeType = 'image/jpeg'): array
     {
+        // Correction du MimeType si mal renseigné depuis le Mobile
+        if (empty($mimeType) || $mimeType === 'application/octet-stream') {
+            $mimeType = 'image/jpeg';
+        }
+
         $prompt = <<<PROMPT
-        Analyse cette image (reçu, ticket de caisse, ou relevé listant plusieurs transactions) LIGNE PAR LIGNE.
+        Tu es un système OCR expert. Examine attentivement cette image (reçu, facture, ticket de caisse, relevé de transactions) et lis TOUT le texte présent, même s'il est petit ou flou.
+        Analyse le document LIGNE PAR LIGNE.
 
         RÈGLES IMPORTANTES :
         - Chaque ligne de transaction distincte (achat, retrait, dépôt, paiement...) doit devenir un objet séparé dans "transactions".
@@ -108,8 +114,19 @@ class GeminiService
      */
     public function extraireDonneesAudio(string $audioBase64, string $mimeType = 'audio/mp3'): array
     {
+        // Normalisation des MimeTypes fréquemment envoyés par les smartphones (Android/iOS)
+        if (str_contains($mimeType, 'm4a') || str_contains($mimeType, 'mp4')) {
+            $mimeType = 'audio/mp4';
+        } elseif (str_contains($mimeType, '3gp')) {
+            $mimeType = 'audio/3gpp';
+        } elseif (empty($mimeType) || $mimeType === 'application/octet-stream') {
+            $mimeType = 'audio/mp3';
+        }
+
         $prompt = <<<PROMPT
-        Écoute cet enregistrement audio où une personne décrit une ou plusieurs transactions financières (dépense ou revenu).
+        Tu es un expert en écoute et en transcription d'enregistrements vocaux.
+        Écoute cet enregistrement audio très attentivement (même si le niveau sonore est bas ou s'il y a du bruit de fond).
+        Une personne y décrit une ou plusieurs transactions financières (dépenses ou revenus).
 
         RÈGLES IMPORTANTES :
         - Traite chaque transaction distincte mentionnée dans l'audio, DANS L'ORDRE où elle est décrite, comme un objet séparé dans "transactions".
@@ -164,6 +181,11 @@ class GeminiService
         basés UNIQUEMENT sur les données agrégées fournies ci-dessous (jamais de comparaison avec d'autres utilisateurs).
         Reste concis, concret, et évite le jargon financier complexe.
 
+        REGLES STRICTES DE FORMATAGE :
+        - Rédige tes réponses en texte brut clair.
+        - N'utilise ABSOLUMENT AUCUNE mise en forme Markdown. N'utilise JAMAIS de symboles comme **, ##, *, _, ou `.
+        - Pour mettre en valeur un mot ou un chiffre, écris-le simplement normalement ou en majuscules sans symboles autour.
+
         La devise de l'utilisateur est le Franc CFA (FCFA). Exprime TOUJOURS les montants en FCFA
         (jamais en euros, en €, ni en dollars), en utilisant le format "12 000 FCFA".
 
@@ -178,7 +200,13 @@ class GeminiService
 
         $response = $this->callGenerateContent($contents, $systemPrompt);
 
-        return $this->extraireTexte($response);
+        $texte = $this->extraireTexte($response);
+
+        // Nettoyage de sécurité pour garantir la suppression de tout symbole ** ou Markdown résiduel
+        $textePropre = preg_replace('/\*\*(.*?)\*\*/', '$1', $texte);
+        $textePropre = str_replace(['**', '##', '`'], '', $textePropre);
+
+        return trim($textePropre);
     }
 
     /**
