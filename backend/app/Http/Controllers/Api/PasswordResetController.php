@@ -9,8 +9,10 @@ use App\Http\Requests\VerifyResetCodeRequest;
 use App\Models\PasswordResetCode;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class PasswordResetController extends Controller
 {
@@ -20,8 +22,6 @@ class PasswordResetController extends Controller
 
     /**
      * Étape 1 : génère un code à 6 chiffres et l'envoie par email.
-     * Réponse volontairement identique que le compte existe ou non, pour ne pas
-     * révéler quels emails sont enregistrés (protection contre l'énumération de comptes).
      */
     public function envoyerCode(ForgotPasswordRequest $request)
     {
@@ -40,14 +40,26 @@ class PasswordResetController extends Controller
                 ]
             );
 
-            Mail::raw(
-                "Votre code de réinitialisation MyPocket est : {$code}\n\n".
-                'Ce code expire dans '.self::DUREE_VALIDITE_MINUTES." minutes.\n".
-                "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.",
-                function ($message) use ($email) {
-                    $message->to($email)->subject('Réinitialisation de votre mot de passe MyPocket');
-                }
-            );
+            try {
+                // Envoi direct synchrone de l'e-mail
+                Mail::raw(
+                    "Votre code de réinitialisation MyPocket est : {$code}\n\n".
+                    'Ce code expire dans '.self::DUREE_VALIDITE_MINUTES." minutes.\n".
+                    "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.",
+                    function ($message) use ($email) {
+                        $message->to($email)
+                                ->subject('Réinitialisation de votre mot de passe MyPocket');
+                    }
+                );
+            } catch (Throwable $e) {
+                // Enregistre l'erreur SMTP exacte dans les logs pour le débogage
+                Log::error("Échec d'envoi de l'email OTP à {$email} : " . $e->getMessage());
+                
+                return response()->json([
+                    'message' => "Impossible d'envoyer l'email pour le moment. Veuillez réessayer.",
+                    'error' => config('app.debug') ? $e->getMessage() : null
+                ], 500);
+            }
         }
 
         return response()->json([
@@ -56,8 +68,7 @@ class PasswordResetController extends Controller
     }
 
     /**
-     * Étape 2 (optionnelle côté UX) : permet au frontend de vérifier le code
-     * avant d'afficher l'écran de saisie du nouveau mot de passe.
+     * Étape 2 (optionnelle côté UX) : permet au frontend de vérifier le code.
      */
     public function verifierCode(VerifyResetCodeRequest $request)
     {
@@ -70,7 +81,6 @@ class PasswordResetController extends Controller
 
     /**
      * Étape 3 : vérifie à nouveau le code puis remplace le mot de passe.
-     * Toutes les sessions actives de l'utilisateur sont révoquées par sécurité.
      */
     public function reinitialiser(ResetPasswordRequest $request)
     {
