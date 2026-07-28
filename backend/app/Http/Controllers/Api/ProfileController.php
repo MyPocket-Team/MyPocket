@@ -22,12 +22,16 @@ class ProfileController extends Controller
         $soldeInitialModifie = isset($data['solde_initial']) && $data['solde_initial'] != $user->solde_initial;
 
         if ($request->hasFile('photo')) {
+            // Récupère le disque cloud configuré (ex: s3, cloudinary) ou 'public' par défaut
+            $disk = config('filesystems.default', 'public');
+
             // Supprime l'ancienne photo si elle existe
-            if ($user->photo) {
-                Storage::disk('public')->delete($user->photo);
+            if ($user->photo && Storage::disk($disk)->exists($user->photo)) {
+                Storage::disk($disk)->delete($user->photo);
             }
 
-            $data['photo'] = $request->file('photo')->store('profils', 'public');
+            // Enregistre la nouvelle photo sur le stockage cloud
+            $data['photo'] = $request->file('photo')->store('profils', $disk);
         }
 
         $user->update($data);
