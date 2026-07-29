@@ -45,7 +45,7 @@ function goToLogin() {
   align-items: center;
   background:
     linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.7) 100%),
-    url("/fond.png") center center / cover no-repeat;
+    url("/fond.jpg") center center / cover no-repeat;
   padding: 24px;
   box-sizing: border-box;
 }
