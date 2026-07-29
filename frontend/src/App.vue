@@ -78,6 +78,59 @@ const isAdminRoute = computed(() => {
   return typeof route.name === "string" && route.name.startsWith("admin-");
 });
 
+const isPlanningRoute = computed(() => route.name === "planning");
+
+// ── Sous-menu "Mes plannings" affiché sous le lien Planning Budget (desktop) ──
+const sidebarPlannings = ref([]);
+const activeSidebarPlanningId = computed(() => {
+  const id = route.query.planning ? parseInt(route.query.planning, 10) : null;
+  return id || (sidebarPlannings.value[0] && sidebarPlannings.value[0].id) || null;
+});
+
+async function fetchSidebarPlannings() {
+  try {
+    const response = await api.get("/plannings");
+    sidebarPlannings.value = response.data.data || response.data || [];
+  } catch (e) {
+    console.error("Error fetching plannings for sidebar", e);
+  }
+}
+
+function selectSidebarPlanning(id) {
+  router.push({ name: "planning", query: { planning: id } });
+}
+
+watch(isPlanningRoute, (isNow) => {
+  if (isNow) fetchSidebarPlannings();
+}, { immediate: true });
+
+const isChatbotRoute = computed(() => route.name === "chatbot");
+
+// ── Sous-menu "Discussions" affiché sous le lien Assistant (desktop) ──
+const sidebarConversations = ref([]);
+const activeSidebarConversationId = computed(() => {
+  const id = route.query.conversation ? parseInt(route.query.conversation, 10) : null;
+  return id || (sidebarConversations.value[0] && sidebarConversations.value[0].id) || null;
+});
+
+async function fetchSidebarConversations() {
+  try {
+    const response = await api.get("/chatbot/conversations");
+    const remote = response.data.data || response.data;
+    sidebarConversations.value = (remote || []).map((c) => ({ id: c.id, title: c.titre || "Nouvelle discussion" }));
+  } catch (e) {
+    console.error("Error fetching conversations for sidebar", e);
+  }
+}
+
+function selectSidebarConversation(id) {
+  router.push({ name: "chatbot", query: { conversation: id } });
+}
+
+watch(isChatbotRoute, (isNow) => {
+  if (isNow) fetchSidebarConversations();
+}, { immediate: true });
+
 // Sidebar links (Desktop)
 const sidebarLinks = [
   { name: "dashboard", label: "Tableau de bord", icon: "home" },
@@ -205,9 +258,8 @@ async function markNotificationRead(id) {
           <div>
             <div v-if="isAdminRoute" class="sidebar-section-label">Pilotage</div>
             <nav class="sidebar-nav">
+              <template v-for="link in activeSidebarLinks" :key="link.name">
               <button
-                v-for="link in activeSidebarLinks"
-                :key="link.name"
                 type="button"
                 class="sidebar-nav-link"
                 :class="{ 'sidebar-nav-link--active': route.name === link.name }"
@@ -256,6 +308,35 @@ async function markNotificationRead(id) {
 
                 <span>{{ link.label }}</span>
               </button>
+
+              <div v-if="link.name === 'planning' && isPlanningRoute" class="sidebar-submenu">
+                <button
+                  v-for="p in sidebarPlannings"
+                  :key="p.id"
+                  type="button"
+                  class="sidebar-submenu-item"
+                  :class="{ 'sidebar-submenu-item--active': p.id === activeSidebarPlanningId }"
+                  @click="selectSidebarPlanning(p.id)"
+                >
+                  {{ p.titre }}
+                </button>
+                <p v-if="sidebarPlannings.length === 0" class="sidebar-submenu-empty">Aucun planning pour l'instant.</p>
+              </div>
+
+              <div v-if="link.name === 'chatbot' && isChatbotRoute" class="sidebar-submenu">
+                <button
+                  v-for="c in sidebarConversations"
+                  :key="c.id"
+                  type="button"
+                  class="sidebar-submenu-item"
+                  :class="{ 'sidebar-submenu-item--active': c.id === activeSidebarConversationId }"
+                  @click="selectSidebarConversation(c.id)"
+                >
+                  {{ c.title }}
+                </button>
+                <p v-if="sidebarConversations.length === 0" class="sidebar-submenu-empty">Aucune discussion pour l'instant.</p>
+              </div>
+              </template>
             </nav>
           </div>
         </div>

@@ -258,6 +258,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
@@ -322,7 +323,7 @@ onMounted(() => {
 .select-wrapper {
   position: relative;
   flex: 1;
-  min-width: 130px;
+  min-width: 150px;
 }
 
 .filter-select {
@@ -330,15 +331,18 @@ onMounted(() => {
   background-color: var(--color-bg-soft);
   border: 1px solid transparent;
   border-radius: 12px;
-  padding: 10px 16px;
-  font-size: 0.88rem;
+  padding: 10px 34px 10px 14px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-ink-soft);
   outline: none;
   appearance: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 14px center;
+  background-position: right 12px center;
   transition: all 0.2s ease;
 }
 
@@ -522,9 +526,9 @@ onMounted(() => {
   }
 
   .controls-panel {
-    flex-direction: row;
-    align-items: center;
-    padding: 16px 24px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px 24px;
   }
 
   .search-bar {
@@ -532,7 +536,6 @@ onMounted(() => {
   }
 
   .filters {
-    margin-left: auto;
     flex-wrap: nowrap;
   }
 }

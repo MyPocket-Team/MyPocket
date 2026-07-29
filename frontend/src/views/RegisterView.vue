@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import api from "../services/api";
+import PasswordField from "../components/PasswordField.vue";
 
 const router = useRouter();
 
@@ -65,8 +66,8 @@ async function handleSubmit() {
         <input v-model="email" type="email" placeholder="Adresse email" class="field" required />
 
         <div class="form-grid">
-          <input v-model="password" type="password" placeholder="Mot de passe" class="field" minlength="8" required />
-          <input v-model="confirmPassword" type="password" placeholder="Confirmer" class="field" minlength="8" required />
+          <PasswordField v-model="password" placeholder="Mot de passe" minlength="8" required />
+          <PasswordField v-model="confirmPassword" placeholder="Confirmer" minlength="8" required />
         </div>
 
         <p v-if="error" class="error">{{ error }}</p>
@@ -86,13 +87,24 @@ async function handleSubmit() {
 
 <style scoped>
 .register-container {
+  position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: radial-gradient(100% 100% at 50% 0%, rgba(209, 250, 229, 0.4) 0%, #f1f5f9 100%), var(--color-bg);
   padding: 24px;
   box-sizing: border-box;
+}
+
+.register-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.7) 100%),
+    url("/fond.jpg") center center / cover no-repeat;
 }
 
 .register-card {

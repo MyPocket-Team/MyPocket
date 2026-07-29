@@ -624,6 +624,17 @@ function goTo(routeName) {
   opacity: 0.6;
 }
 
+/* Narrow phones */
+@media (max-width: 380px) {
+  .balance-amount {
+    font-size: 1.7rem;
+  }
+
+  .balance-currency {
+    font-size: 1rem;
+  }
+}
+
 /* Responsive Overrides */
 @media (min-width: 768px) {
   .dashboard-container {

@@ -1,9 +1,10 @@
 <script setup>
-import { ref, nextTick, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, nextTick, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
 
 const router = useRouter();
+const route = useRoute();
 
 function goBack() {
   router.back();
@@ -27,7 +28,12 @@ async function fetchConversations() {
     const remote = res.data.data || res.data;
     conversations.value = (remote || []).map(mapConversation);
 
-    if (conversations.value.length) {
+    const requestedId = route.query.conversation ? parseInt(route.query.conversation, 10) : null;
+    const requested = requestedId && conversations.value.find((c) => c.id === requestedId);
+
+    if (requested) {
+      await openConversation(requested);
+    } else if (conversations.value.length) {
       await openConversation(conversations.value[0]);
     } else {
       messages.value = [];
@@ -51,9 +57,16 @@ async function fetchMessages(conversationId) {
   }
 }
 
+function syncConversationQuery(id) {
+  if (String(route.query.conversation || "") !== String(id || "")) {
+    router.replace({ query: { ...route.query, conversation: id || undefined } });
+  }
+}
+
 async function openConversation(conv) {
   activeConversationId.value = conv.id;
   panelOpen.value = false;
+  syncConversationQuery(conv.id);
   await fetchMessages(conv.id);
 }
 
@@ -65,10 +78,26 @@ async function startNewConversation() {
     activeConversationId.value = conv.id;
     messages.value = [];
     panelOpen.value = false;
+    syncConversationQuery(conv.id);
   } catch (e) {
     console.error("Unable to create a new conversation", e);
   }
 }
+
+// Le sous-menu "Discussions" de la sidebar principale (App.vue) navigue vers
+// /chatbot?conversation=<id> ; comme Vue Router réutilise cette instance de
+// composant (même route), on écoute le changement de query pour refléter la
+// sélection sans reload.
+watch(
+  () => route.query.conversation,
+  (newVal) => {
+    const requestedId = newVal ? parseInt(newVal, 10) : null;
+    const conv = requestedId && conversations.value.find((c) => c.id === requestedId);
+    if (conv && conv.id !== activeConversationId.value) {
+      openConversation(conv);
+    }
+  }
+);
 
 async function ensureActiveConversation() {
   if (activeConversationId.value) return activeConversationId.value;
@@ -254,6 +283,15 @@ onMounted(() => {
   width: 100%;
   display: flex;
   overflow: hidden;
+}
+
+/* Sur mobile, .app-content réserve 78px en bas pour la barre de navigation :
+   sans en tenir compte ici, le chat exigeait 100vh en plus de cette réserve,
+   ce qui rendait toute la page ~78px plus haute que l'écran. */
+@media (max-width: 767px) {
+  .chatbot-container {
+    height: calc(100vh - 78px);
+  }
 }
 
 .chatbot-workspace {
@@ -608,12 +646,13 @@ onMounted(() => {
 
 /* Large Screens */
 @media (min-width: 768px) {
+  /* La sélection d'une conversation se fait depuis le sous-menu de la
+     sidebar principale (App.vue) — cette liste interne ne sert qu'au
+     tiroir mobile. */
   .recent-sidebar {
-    display: flex;
-    position: static;
-    transform: none;
+    display: none;
   }
-  
+
   .chat-messages-area {
     padding: 32px 40px;
   }

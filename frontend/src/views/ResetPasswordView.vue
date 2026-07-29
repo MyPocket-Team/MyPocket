@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
+import PasswordField from "../components/PasswordField.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -57,8 +58,8 @@ async function handleSubmit() {
       </header>
 
       <form class="form" @submit.prevent="handleSubmit">
-        <input v-model="password" type="password" placeholder="Nouveau mot de passe" class="field" minlength="8" required />
-        <input v-model="confirmPassword" type="password" placeholder="Confirmer le mot de passe" class="field" minlength="8" required />
+        <PasswordField v-model="password" placeholder="Nouveau mot de passe" minlength="8" required />
+        <PasswordField v-model="confirmPassword" placeholder="Confirmer le mot de passe" minlength="8" required />
 
         <p v-if="error" class="error">{{ error }}</p>
 

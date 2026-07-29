@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn \"fab\\\\|quick-add\\\\|btn-add\\\\|add-button\\\\|+\\\\s*$\" /home/asteras/Documents/MyPocket/frontend/src/style.css)",
+      "Bash(npm -v)",
+      "Bash(npm install *)",
+      "Bash(git -C /home/asteras/Documents/MyPocket log --oneline --all -- frontend/public/fond.jpg)",
+      "Bash(awk -F: '{print $1, $2, $3}')",
+      "Bash(awk 'NR==420,NR==445' /home/asteras/Documents/MyPocket/frontend/src/style.css)",
+      "Bash(npx vite *)"
+    ]
+  }
+}

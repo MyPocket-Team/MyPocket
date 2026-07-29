@@ -112,7 +112,7 @@ button:active {
   display: grid;
   grid-template-columns: 1fr;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
 }
 
 .app-sidebar {
@@ -342,12 +342,16 @@ button:active {
 
 /* Floating Action Button for mobile */
 .nav-fab {
+  flex: 0 0 auto;
   transform: translateY(-16px);
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: var(--color-white) !important;
   width: 52px;
   height: 52px;
+  min-width: 52px;
+  min-height: 52px;
   border-radius: 50%;
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -467,6 +471,44 @@ button:active {
   .sidebar-nav-link--active {
     background-color: var(--color-primary-light);
     color: var(--color-primary-dark);
+  }
+
+  .sidebar-submenu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 2px 0 6px 34px;
+    padding-left: 12px;
+    border-left: 2px solid var(--color-border);
+  }
+
+  .sidebar-submenu-item {
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.15s ease;
+  }
+
+  .sidebar-submenu-item:hover {
+    background-color: var(--color-bg-soft);
+    color: var(--color-primary);
+  }
+
+  .sidebar-submenu-item--active {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary-dark);
+  }
+
+  .sidebar-submenu-empty {
+    font-size: 0.76rem;
+    color: var(--color-ink-soft);
+    padding: 6px 10px;
   }
 
   .sidebar-profile {

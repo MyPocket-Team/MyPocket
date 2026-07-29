@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
 
 const router = useRouter();
+const route = useRoute();
 
 function goBack() {
   router.back();
@@ -159,7 +160,27 @@ watch(activePlanningId, (newId) => {
   } else {
     plannedTransactions.value = [];
   }
+
+  // Garde l'URL synchronisée avec la sélection, pour que le sous-menu
+  // "Planning Budget" de la sidebar principale (App.vue) puisse la lire
+  // et la surligner correctement.
+  if (String(route.query.planning || "") !== String(newId || "")) {
+    router.replace({ query: { ...route.query, planning: newId || undefined } });
+  }
 });
+
+// Le sous-menu de la sidebar principale navigue vers /planning?planning=<id> ;
+// comme Vue Router réutilise cette instance de composant (même route), on
+// écoute le changement de query pour refléter la sélection sans reload.
+watch(
+  () => route.query.planning,
+  (newVal) => {
+    const requestedId = newVal ? parseInt(newVal, 10) : null;
+    if (requestedId && requestedId !== activePlanningId.value && plannings.value.some((p) => p.id === requestedId)) {
+      activePlanningId.value = requestedId;
+    }
+  }
+);
 
 
 const statutLabels = {
@@ -181,7 +202,10 @@ async function fetchPlannings() {
     const list = res.data.data || res.data;
     plannings.value = (list || []).map(mapPlanning);
 
-    if (plannings.value.length && !plannings.value.some((p) => p.id === activePlanningId.value)) {
+    const requestedId = route.query.planning ? parseInt(route.query.planning, 10) : null;
+    if (requestedId && plannings.value.some((p) => p.id === requestedId)) {
+      activePlanningId.value = requestedId;
+    } else if (plannings.value.length && !plannings.value.some((p) => p.id === activePlanningId.value)) {
       activePlanningId.value = plannings.value[0].id;
     }
   } catch (e) {
@@ -331,7 +355,7 @@ onMounted(() => {
           </button>
         </div>
 
-        <button type="button" class="new-planning-btn" @click="openCreatePlanningModal">
+        <button v-if="plannings.length > 0" type="button" class="new-planning-btn" @click="openCreatePlanningModal">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
@@ -376,13 +400,6 @@ onMounted(() => {
                 <h2 class="planning-main-title">{{ activePlanning.titre }}</h2>
                 <p class="planning-main-description">{{ activePlanning.description || "Aucune description." }}</p>
               </div>
-              <button type="button" class="edit-header-btn" @click="openEditPlanningModal">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-                Modifier les détails
-              </button>
             </div>
           </section>
 
@@ -434,7 +451,7 @@ onMounted(() => {
                 <h2 class="section-title">Transactions Planifiées</h2>
                 <p class="section-subtitle">Planifie tes dépenses et revenus liés à ce budget.</p>
               </div>
-              <button type="button" class="plan-btn" @click="openPlanTxModal">
+              <button v-if="plannedTransactions.length > 0" type="button" class="plan-btn" @click="openPlanTxModal">
                 + Planifier une transaction
               </button>
             </div>
@@ -731,6 +748,15 @@ onMounted(() => {
   }
 }
 
+@media (min-width: 768px) {
+  /* Sur desktop, la sélection d'un planning se fait depuis le sous-menu de
+     la sidebar principale (App.vue) — cette liste interne ne sert qu'au
+     panneau mobile. */
+  .plannings-sidebar {
+    display: none;
+  }
+}
+
 .plannings-sidebar-top {
   display: flex;
   align-items: center;
@@ -916,6 +942,11 @@ onMounted(() => {
 
 .edit-header-btn:hover {
   background-color: var(--color-border);
+}
+
+.planning-detail-card {
+  border-radius: 20px;
+  padding: 20px 24px;
 }
 
 /* --- Planning Detail Rows (Échéance / Statut / Transaction liée) --- */
@@ -1399,7 +1430,7 @@ onMounted(() => {
   background-color: var(--color-paper-raised);
 }
 
-.type-toggle-group {
+.type-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
   background-color: var(--color-bg-soft);
@@ -1411,18 +1442,19 @@ onMounted(() => {
   padding: 10px;
   font-size: 0.9rem;
   font-weight: 700;
+  text-align: center;
   border-radius: 10px;
   color: var(--color-ink-soft);
   transition: all 0.2s ease;
 }
 
-.type-btn--depense.active {
+.type-btn--depense.type-btn--active {
   background-color: var(--color-danger);
   color: #fff;
   box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
 }
 
-.type-btn--revenu.active {
+.type-btn--revenu.type-btn--active {
   background-color: var(--color-primary);
   color: #fff;
   box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);

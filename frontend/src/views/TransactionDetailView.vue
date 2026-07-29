@@ -386,6 +386,21 @@ onMounted(() => {
   margin: 0;
 }
 
+/* Narrow phones */
+@media (max-width: 380px) {
+  .amount-display {
+    font-size: 1.7rem;
+  }
+
+  .math-sign {
+    font-size: 1.4rem;
+  }
+
+  .currency {
+    font-size: 0.95rem;
+  }
+}
+
 /* Responsive adjustments */
 @media (min-width: 768px) {
   .page-container {
