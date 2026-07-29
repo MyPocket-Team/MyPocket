@@ -33,7 +33,9 @@ html, body {
   overflow-x: hidden;
   height: 100%;
 }
-
+html {
+  overscroll-behavior-y: none;
+}
 body {
   background-color: var(--color-bg);
   color: var(--color-ink);
