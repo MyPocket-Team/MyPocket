@@ -448,8 +448,9 @@ function goTo(routeName) {
 
 .transaction-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 14px;
+  gap: 6px 14px;
   padding: 12px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.5);
@@ -485,11 +486,11 @@ function goTo(routeName) {
 }
 
 .t-details {
-  flex: 1;
+  flex: 1 1 160px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 55%;
+  min-width: 160px;
 }
 
 .t-desc {
@@ -510,8 +511,8 @@ function goTo(routeName) {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  flex-shrink: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .t-amount {

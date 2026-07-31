@@ -386,8 +386,9 @@ onMounted(() => {
 
 .transaction-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 16px;
+  gap: 8px 16px;
   background-color: var(--color-paper-raised);
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -422,11 +423,11 @@ onMounted(() => {
 }
 
 .transaction-main {
-  flex: 1;
+  flex: 1 1 180px;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-width: 55%;
+  min-width: 180px;
 }
 
 .transaction-description {
@@ -446,8 +447,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .transaction-amount {
