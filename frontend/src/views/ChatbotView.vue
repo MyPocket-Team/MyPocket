@@ -1,10 +1,23 @@
 <script setup>
 import { ref, nextTick, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import api from "../services/api";
 
 const router = useRouter();
 const route = useRoute();
+
+// Les réponses du bot sont écrites en Markdown (gras, listes, etc.) ; on les
+// convertit en HTML puis on assainit le résultat avant de l'injecter via
+// v-html, pour éviter tout risque XSS. `breaks:true` transforme les simples
+// retours à la ligne en <br>, car le bot n'écrit pas toujours des paragraphes
+// séparés par une ligne vide.
+marked.setOptions({ breaks: true });
+
+function renderMarkdown(text) {
+  return DOMPurify.sanitize(marked.parse(text || ""));
+}
 
 function goBack() {
   router.back();
@@ -268,9 +281,15 @@ onMounted(() => {
             class="message-wrapper"
             :class="m.role === 'user' ? 'message-wrapper--user' : 'message-wrapper--bot'"
           >
-            <div class="message-bubble" :class="m.role === 'user' ? 'message-bubble--user' : 'message-bubble--bot'">
-              {{ m.text }}
-            </div>
+            <div
+              v-if="m.role === 'user'"
+              class="message-bubble message-bubble--user"
+            >{{ m.text }}</div>
+            <div
+              v-else
+              class="message-bubble message-bubble--bot markdown-body"
+              v-html="renderMarkdown(m.text)"
+            ></div>
           </div>
 
           <!-- Typing indicator -->
@@ -617,6 +636,74 @@ onMounted(() => {
   color: var(--color-ink);
   border: 1px solid var(--color-border);
   border-radius: 20px 20px 20px 4px;
+}
+
+/* Le HTML issu de marked() est injecté via v-html, donc pas compilé par Vue :
+   il faut :deep() pour que ces styles scoped atteignent ces éléments. */
+.markdown-body :deep(p) {
+  margin: 0 0 8px;
+}
+
+.markdown-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(strong) {
+  font-weight: 700;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 4px;
+}
+
+.markdown-body :deep(li:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(a) {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+.markdown-body :deep(code) {
+  background-color: var(--color-bg-soft);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.85em;
+}
+
+.markdown-body :deep(pre) {
+  background-color: var(--color-bg-soft);
+  padding: 10px 12px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 0 0 8px;
+}
+
+.markdown-body :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3) {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid var(--color-border);
+  margin: 0 0 8px;
+  padding-left: 12px;
+  color: var(--color-ink-soft);
 }
 
 /* Typing bubble styling */

@@ -433,14 +433,14 @@ onMounted(() => {
 
 .transaction-description {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   color: var(--color-ink);
   line-height: 1.35;
   overflow-wrap: break-word;
 }
 
 .transaction-categorie {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--color-ink-soft);
 }
 
@@ -449,11 +449,12 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   flex-shrink: 1;
+  min-width: 0;
 }
 
 .transaction-amount {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 

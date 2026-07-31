@@ -414,15 +414,18 @@ function goTo(routeName) {
 }
 
 .card-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--color-ink);
+  min-width: 0;
 }
 
 .view-all-link {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .view-all-link:hover {
@@ -504,14 +507,14 @@ function goTo(routeName) {
 
 .t-desc {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--color-ink);
   line-height: 1.35;
   overflow-wrap: break-word;
 }
 
 .t-cat {
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   color: var(--color-ink-soft);
 }
 
@@ -521,11 +524,13 @@ function goTo(routeName) {
   align-items: flex-end;
   gap: 2px;
   flex-shrink: 1;
+  min-width: 0;
 }
 
 .t-amount {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .t-amount--revenu {
@@ -537,8 +542,9 @@ function goTo(routeName) {
 }
 
 .t-date {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--color-ink-soft);
+  white-space: nowrap;
 }
 
 /* Quick Actions Section */
