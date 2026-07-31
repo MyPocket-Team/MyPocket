@@ -9,8 +9,8 @@ use App\Http\Requests\VerifyResetCodeRequest;
 use App\Models\PasswordResetCode;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -41,18 +41,31 @@ class PasswordResetController extends Controller
             );
 
             try {
-                // Envoi direct synchrone de l'e-mail
-                Mail::raw(
-                    "Votre code de réinitialisation MyPocket est : {$code}\n\n".
-                    'Ce code expire dans '.self::DUREE_VALIDITE_MINUTES." minutes.\n".
-                    "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.",
-                    function ($message) use ($email) {
-                        $message->to($email)
-                                ->subject('Réinitialisation de votre mot de passe MyPocket');
-                    }
-                );
+                // Envoi via l'API HTTP de Brevo (contourne le blocage des ports SMTP sur Render free tier)
+                $response = Http::withHeaders([
+                    'accept' => 'application/json',
+                    'api-key' => config('services.brevo.api_key'),
+                    'content-type' => 'application/json',
+                ])->post('https://api.brevo.com/v3/smtp/email', [
+                    'sender' => [
+                        'name' => config('services.brevo.sender_name'),
+                        'email' => config('services.brevo.sender_email'),
+                    ],
+                    'to' => [
+                        ['email' => $email],
+                    ],
+                    'subject' => 'Réinitialisation de votre mot de passe MyPocket',
+                    'textContent' =>
+                        "Votre code de réinitialisation MyPocket est : {$code}\n\n".
+                        'Ce code expire dans '.self::DUREE_VALIDITE_MINUTES." minutes.\n".
+                        "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.",
+                ]);
+
+                if ($response->failed()) {
+                    throw new \Exception('Brevo API error: '.$response->body());
+                }
             } catch (Throwable $e) {
-                // Enregistre l'erreur SMTP exacte dans les logs pour le débogage
+                // Enregistre l'erreur exacte dans les logs pour le débogage
                 Log::error("Échec d'envoi de l'email OTP à {$email} : " . $e->getMessage());
                 
                 return response()->json([
