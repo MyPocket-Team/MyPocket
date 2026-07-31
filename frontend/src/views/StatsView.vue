@@ -328,6 +328,14 @@ onMounted(() => {
   gap: 24px;
 }
 
+/* Sans ce reset, une grille CSS garde un min-width:auto implicite basé sur
+   le contenu (ex: un nom de catégorie long) et peut élargir la colonne au
+   lieu de laisser le texte se tronquer, ce qui fait déborder la page. */
+.chart-section,
+.breakdown-section {
+  min-width: 0;
+}
+
 /* Balance display card */
 .balance-card {
   position: relative;

@@ -298,6 +298,15 @@ function goTo(routeName) {
   gap: 24px;
 }
 
+/* Les items d'une grille CSS ont un min-width:auto implicite (basé sur le
+   contenu qui ne peut pas se réduire), donc sans ce reset une transaction
+   avec une longue description peut élargir la colonne entière au lieu de
+   se faire tronquer par l'ellipsis, et fait déborder la page à l'horizontale. */
+.main-column,
+.side-column {
+  min-width: 0;
+}
+
 /* Balance Card */
 .balance-card {
   position: relative;
