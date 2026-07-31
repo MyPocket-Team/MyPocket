@@ -428,7 +428,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-width: 0;
+  min-width: 55%;
 }
 
 .transaction-description {
@@ -448,7 +448,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .transaction-amount {

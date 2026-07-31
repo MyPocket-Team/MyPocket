@@ -202,7 +202,7 @@ const notifications = ref([]);
 
 async function refreshNotifications() {
   const token = localStorage.getItem("mypocket_token");
-  if (!token || isAdminRoute.value) return;
+  if (!token || !isMemberRoute.value || isAdminRoute.value) return;
 
   try {
     const response = await api.get("/notifications");

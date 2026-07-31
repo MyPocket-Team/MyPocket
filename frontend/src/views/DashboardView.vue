@@ -499,7 +499,7 @@ function goTo(routeName) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
+  min-width: 55%;
 }
 
 .t-desc {
@@ -520,7 +520,7 @@ function goTo(routeName) {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .t-amount {
