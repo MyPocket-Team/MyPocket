@@ -7,7 +7,19 @@
       "Bash(git -C /home/asteras/Documents/MyPocket log --oneline --all -- frontend/public/fond.jpg)",
       "Bash(awk -F: '{print $1, $2, $3}')",
       "Bash(awk 'NR==420,NR==445' /home/asteras/Documents/MyPocket/frontend/src/style.css)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://my-pocket-teal.vercel.app/fond.jpg)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://my-pocket-teal.vercel.app/inscription)",
+      "Bash(git ls-tree *)",
+      "Bash(curl -s https://my-pocket-teal.vercel.app/)",
+      "Bash(curl -s https://my-pocket-teal.vercel.app/assets/index-CzWKpIVz.css -o /tmp/live.css)",
+      "Read(//tmp/**)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(npm ls *)",
+      "Bash(find / -iname \"chromium_cli\" -maxdepth 6)"
     ]
   }
 }

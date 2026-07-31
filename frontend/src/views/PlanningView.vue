@@ -400,6 +400,13 @@ onMounted(() => {
                 <h2 class="planning-main-title">{{ activePlanning.titre }}</h2>
                 <p class="planning-main-description">{{ activePlanning.description || "Aucune description." }}</p>
               </div>
+              <button type="button" class="new-planning-header-btn" @click="openCreatePlanningModal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Nouveau planning
+              </button>
             </div>
           </section>
 
@@ -925,6 +932,23 @@ onMounted(() => {
   color: var(--color-ink-soft);
   margin: 0;
   line-height: 1.45;
+}
+
+.new-planning-header-btn {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.new-planning-header-btn:hover {
+  background-color: rgba(16, 185, 129, 0.2);
 }
 
 .edit-header-btn {

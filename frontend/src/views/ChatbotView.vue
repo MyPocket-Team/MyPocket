@@ -17,6 +17,21 @@ const input = ref("");
 const isTyping = ref(false);
 const panelOpen = ref(false);
 const chatEnd = ref(null);
+const textareaRef = ref(null);
+
+function autoResizeInput() {
+  const el = textareaRef.value;
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+}
+
+function handleInputKeydown(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
 
 function mapConversation(conv) {
   return { id: conv.id, title: conv.titre || "Nouvelle discussion" };
@@ -118,6 +133,8 @@ async function sendMessage() {
   if (!text) return;
 
   input.value = "";
+  await nextTick();
+  autoResizeInput();
 
   try {
     const conversationId = await ensureActiveConversation();
@@ -222,6 +239,15 @@ onMounted(() => {
               <path d="M12 7v5l3.5 2" />
             </svg>
           </button>
+
+          <!-- New Conversation for Desktop (le tiroir "Discussions" est masqué sur desktop) -->
+          <button type="button" class="new-chat-topbar-btn" @click="startNewConversation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nouvelle discussion
+          </button>
         </header>
 
         <!-- Message List -->
@@ -262,7 +288,14 @@ onMounted(() => {
         <!-- Input Bar -->
         <form class="chat-input-bar" @submit.prevent="sendMessage">
           <div class="input-container">
-            <input v-model="input" type="text" placeholder="Écris ton message pour le coach..." />
+            <textarea
+              ref="textareaRef"
+              v-model="input"
+              rows="1"
+              placeholder="Écris ton message pour le coach..."
+              @input="autoResizeInput"
+              @keydown="handleInputKeydown"
+            ></textarea>
             <button type="submit" class="send-btn" :disabled="!input.trim()" aria-label="Envoyer">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13" />
@@ -280,6 +313,7 @@ onMounted(() => {
 <style scoped>
 .chatbot-container {
   height: 100vh;
+  height: 100dvh;
   width: 100%;
   display: flex;
   overflow: hidden;
@@ -287,10 +321,14 @@ onMounted(() => {
 
 /* Sur mobile, .app-content réserve 78px en bas pour la barre de navigation :
    sans en tenir compte ici, le chat exigeait 100vh en plus de cette réserve,
-   ce qui rendait toute la page ~78px plus haute que l'écran. */
+   ce qui rendait toute la page ~78px plus haute que l'écran. On utilise
+   100dvh (dynamic viewport height) plutôt que 100vh : sur mobile, 100vh
+   inclut la zone masquée par la barre d'adresse du navigateur, ce qui
+   pouvait pousser la barre de saisie sous la nav bar. */
 @media (max-width: 767px) {
   .chatbot-container {
     height: calc(100vh - 78px);
+    height: calc(100dvh - 78px);
   }
 }
 
@@ -489,6 +527,13 @@ onMounted(() => {
   justify-content: center;
 }
 
+/* Le tiroir "Discussions" (avec son bouton Nouvelle discussion) est masqué
+   sur desktop (cf. .recent-sidebar), donc ce bouton prend le relais dans le
+   topbar pour garder l'action accessible sur tous les écrans. */
+.new-chat-topbar-btn {
+  display: none;
+}
+
 /* Message area */
 .chat-messages-area {
   flex: 1;
@@ -599,7 +644,7 @@ onMounted(() => {
 
 .input-container {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   background-color: var(--color-bg);
   border: 1.5px solid var(--color-border);
   border-radius: 18px;
@@ -613,14 +658,19 @@ onMounted(() => {
   background-color: var(--color-paper-raised);
 }
 
-.input-container input {
+.input-container textarea {
   flex: 1;
   border: none;
   background: transparent;
   outline: none;
+  resize: none;
+  font-family: inherit;
   font-size: 0.95rem;
+  line-height: 1.4;
   color: var(--color-ink);
-  height: 38px;
+  padding: 8px 0;
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 .send-btn {
@@ -633,6 +683,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-bottom: 1px;
 }
 
 .send-btn:hover {
@@ -651,6 +702,22 @@ onMounted(() => {
      tiroir mobile. */
   .recent-sidebar {
     display: none;
+  }
+
+  .new-chat-topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--color-primary-light);
+    color: var(--color-primary-dark);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-weight: 700;
+    font-size: 0.82rem;
+  }
+
+  .new-chat-topbar-btn:hover {
+    background-color: rgba(16, 185, 129, 0.2);
   }
 
   .chat-messages-area {

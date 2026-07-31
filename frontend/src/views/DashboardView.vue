@@ -335,6 +335,7 @@ function goTo(routeName) {
 
 .balance-mini-stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
