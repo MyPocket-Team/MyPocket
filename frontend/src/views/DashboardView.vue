@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "../services/api";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 const solde = ref(0);
@@ -102,18 +103,16 @@ function goTo(routeName) {
       <div class="wordmark">
         <img src="/logo.png" alt="MyPocket" class="logo-img" />
       </div>
-      <button type="button" class="profile-btn" @click="router.push({ name: 'profile' })" aria-label="Profil">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-      </button>
+      <NotificationBell />
     </header>
 
     <!-- Welcome Message (Desktop only) -->
     <div class="desktop-header">
-      <h1 class="welcome-title">Bonjour {{ userName }} ! 👋</h1>
-      <p class="welcome-subtitle">Voici l'état actuel de tes finances personnelles.</p>
+      <div class="desktop-header-text">
+        <h1 class="welcome-title">Bonjour {{ userName }} ! 👋</h1>
+        <p class="welcome-subtitle">Voici l'état actuel de tes finances personnelles.</p>
+      </div>
+      <NotificationBell />
     </div>
 
     <!-- Responsive Layout Grid -->
@@ -260,18 +259,6 @@ function goTo(routeName) {
 .logo-img {
   height: 36px;
   width: auto;
-}
-
-.profile-btn {
-  background: var(--color-paper-raised);
-  border: 1px solid var(--color-border);
-  color: var(--color-ink-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
 }
 
 /* Welcome message header */
@@ -663,7 +650,10 @@ function goTo(routeName) {
   }
 
   .desktop-header {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
   }
 
   .dashboard-grid {

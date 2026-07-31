@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "../services/api";
 import { useDialog } from "../composables/useDialog";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 const { confirmDialog } = useDialog();
@@ -141,7 +142,7 @@ onMounted(() => {
         </svg>
       </button>
       <h1 class="topbar-title">Historique des transactions</h1>
-      <span class="spacer"></span>
+      <NotificationBell />
     </header>
 
     <!-- Search & Filters Container -->
@@ -282,9 +283,6 @@ onMounted(() => {
   color: var(--color-ink);
 }
 
-.spacer {
-  width: 40px;
-}
 
 /* Controls Panel */
 .controls-panel {

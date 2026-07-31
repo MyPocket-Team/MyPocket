@@ -3,6 +3,7 @@ import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
 import { useDialog } from "../composables/useDialog";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -117,6 +118,7 @@ onMounted(() => {
           </svg>
         </button>
         <h1 class="topbar-title">Détail de la transaction</h1>
+        <NotificationBell />
       </header>
 
       <!-- Receipt card display -->
@@ -226,6 +228,7 @@ onMounted(() => {
 }
 
 .topbar-title {
+  flex: 1;
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--color-ink);

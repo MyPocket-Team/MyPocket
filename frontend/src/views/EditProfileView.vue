@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "../services/api";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 
@@ -99,7 +100,7 @@ async function handleSubmit() {
         </svg>
       </button>
       <h1 class="topbar-title">Modifier le profil</h1>
-      <span class="spacer"></span>
+      <NotificationBell />
     </header>
 
     <div class="profile-card-wrapper">
@@ -186,9 +187,6 @@ async function handleSubmit() {
   color: var(--color-ink);
 }
 
-.spacer {
-  width: 40px;
-}
 
 .profile-card-wrapper {
   max-width: 480px;

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "../services/api";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 
@@ -145,7 +146,7 @@ onMounted(() => {
         </svg>
       </button>
       <h1 class="topbar-title">Statistiques</h1>
-      <span class="spacer"></span>
+      <NotificationBell />
     </header>
 
     <div v-if="loading" class="empty-stats-card glass-panel">
@@ -317,9 +318,6 @@ onMounted(() => {
   color: var(--color-ink);
 }
 
-.spacer {
-  width: 40px;
-}
 
 /* Grid layout */
 .stats-grid {

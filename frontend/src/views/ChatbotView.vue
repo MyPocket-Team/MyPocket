@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import api from "../services/api";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -245,22 +246,26 @@ onMounted(() => {
             </span>
           </div>
 
-          <!-- History Toggle for Mobile -->
-          <button type="button" class="history-toggle mobile-only" @click="panelOpen = true" aria-label="Conversations récentes">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3.5 2" />
-            </svg>
-          </button>
+          <div class="chat-topbar-actions">
+            <!-- History Toggle for Mobile -->
+            <button type="button" class="history-toggle mobile-only" @click="panelOpen = true" aria-label="Conversations récentes">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3.5 2" />
+              </svg>
+            </button>
 
-          <!-- New Conversation for Desktop (le tiroir "Discussions" est masqué sur desktop) -->
-          <button type="button" class="new-chat-topbar-btn" @click="startNewConversation">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Nouvelle discussion
-          </button>
+            <!-- New Conversation for Desktop (le tiroir "Discussions" est masqué sur desktop) -->
+            <button type="button" class="new-chat-topbar-btn" @click="startNewConversation">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Nouvelle discussion
+            </button>
+
+            <NotificationBell />
+          </div>
         </header>
 
         <!-- Message List -->
@@ -496,6 +501,13 @@ onMounted(() => {
   background-color: var(--color-paper-raised);
   border-bottom: 1px solid var(--color-border);
   height: 68px;
+}
+
+.chat-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
 }
 
 .back-btn {

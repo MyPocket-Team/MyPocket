@@ -3,6 +3,9 @@ import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "./services/api";
 import DialogHost from "./components/DialogHost.vue";
+import { useNotifications } from "./composables/useNotifications";
+
+const { refreshNotifications } = useNotifications();
 
 const route = useRoute();
 const router = useRouter();
@@ -40,10 +43,14 @@ function loadSidebarProfile() {
 
 let notifPollId = null;
 
+function pollNotificationsIfMember() {
+  if (isMemberRoute.value && !isAdminRoute.value) refreshNotifications();
+}
+
 onMounted(() => {
   loadSidebarProfile();
-  refreshNotifications();
-  notifPollId = setInterval(refreshNotifications, 60000);
+  pollNotificationsIfMember();
+  notifPollId = setInterval(pollNotificationsIfMember, 60000);
 });
 
 onUnmounted(() => {
@@ -196,45 +203,6 @@ function handleProfileClick() {
   }
 }
 
-// ── Notifications : réelles depuis le backend ──
-const notifPanelOpen = ref(false);
-const notifications = ref([]);
-
-async function refreshNotifications() {
-  const token = localStorage.getItem("mypocket_token");
-  if (!token || !isMemberRoute.value || isAdminRoute.value) return;
-
-  try {
-    const response = await api.get("/notifications");
-    const data = response.data.data || response.data;
-    notifications.value = data.map((n) => ({
-      id: n.id,
-      title: n.titre,
-      message: n.motif,
-      icon: n.type === "solde_bas" ? "alert" : "planning",
-      read: !!n.lue
-    }));
-  } catch (e) {
-    console.error("Error fetching notifications", e);
-  }
-}
-
-const unreadNotifCount = computed(() => notifications.value.filter((n) => !n.read).length);
-
-function toggleNotifPanel() {
-  notifPanelOpen.value = !notifPanelOpen.value;
-  if (notifPanelOpen.value) refreshNotifications();
-}
-
-async function markNotificationRead(id) {
-  try {
-    await api.post(`/notifications/${id}/lue`);
-    const notif = notifications.value.find((n) => n.id === id);
-    if (notif) notif.read = true;
-  } catch (e) {
-    console.error(e);
-  }
-}
 </script>
 
 <template>
@@ -409,59 +377,6 @@ async function markNotificationRead(id) {
 
       <!-- Main Workspace -->
       <main class="app-content">
-        <template v-if="!isAdminRoute">
-          <button type="button" class="notif-bell" @click="toggleNotifPanel" aria-label="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            <span v-if="unreadNotifCount" class="notif-badge">{{ unreadNotifCount }}</span>
-          </button>
-
-          <div v-if="notifPanelOpen" class="notif-overlay" @click="notifPanelOpen = false"></div>
-          <div v-if="notifPanelOpen" class="notif-panel">
-            <div class="notif-panel-header">
-              <span>Notifications</span>
-              <button type="button" class="notif-close" @click="notifPanelOpen = false" aria-label="Fermer">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <div v-if="notifications.length === 0" class="notif-empty">Aucune notification pour le moment.</div>
-
-            <button
-              v-for="n in notifications"
-              :key="n.id"
-              type="button"
-              class="notif-item"
-              :class="[`notif-item--${n.icon}`, { 'notif-item--read': n.read }]"
-              @click="markNotificationRead(n.id)"
-            >
-              <span class="notif-item-icon">
-                <svg v-if="n.icon === 'alert'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              </span>
-              <div class="notif-item-text">
-                <span class="notif-item-title">{{ n.title }}</span>
-                <span class="notif-item-message">{{ n.message }}</span>
-              </div>
-              <span v-if="!n.read" class="notif-unread-dot"></span>
-            </button>
-          </div>
-        </template>
-
         <router-view />
       </main>
     </div>

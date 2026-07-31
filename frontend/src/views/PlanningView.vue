@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
 import { useDialog } from "../composables/useDialog";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -333,16 +334,19 @@ onMounted(() => {
         </svg>
       </button>
       <h1 class="topbar-title">Planning Budget</h1>
-      <button type="button" class="plannings-toggle mobile-only" @click="planningsPanelOpen = true" aria-label="Mes plannings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="8" y1="6" x2="21" y2="6" />
-          <line x1="8" y1="12" x2="21" y2="12" />
-          <line x1="8" y1="18" x2="21" y2="18" />
-          <line x1="3" y1="6" x2="3.01" y2="6" />
-          <line x1="3" y1="12" x2="3.01" y2="12" />
-          <line x1="3" y1="18" x2="3.01" y2="18" />
-        </svg>
-      </button>
+      <div class="topbar-actions">
+        <button type="button" class="plannings-toggle mobile-only" @click="planningsPanelOpen = true" aria-label="Mes plannings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+        </button>
+        <NotificationBell />
+      </div>
     </header>
 
     <div class="planning-workspace">
@@ -683,6 +687,13 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
 }
 
 .back-btn,

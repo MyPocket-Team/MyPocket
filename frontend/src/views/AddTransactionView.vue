@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import api from "../services/api";
+import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -398,6 +399,7 @@ const isFormValid = computed(() => {
         </svg>
       </button>
       <h1 class="topbar-title">{{ pageTitle }}</h1>
+      <NotificationBell />
     </header>
 
     <div class="page-body">
@@ -733,6 +735,7 @@ const isFormValid = computed(() => {
 }
 
 .topbar-title {
+  flex: 1;
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--color-ink);
