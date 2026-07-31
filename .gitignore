@@ -24,3 +24,7 @@ backend/bootstrap/cache/*.php
 # OS
 .DS_Store
 Thumbs.db
+
+# Editor / AI tool config (local only)
+.claude/
+.vscode/
