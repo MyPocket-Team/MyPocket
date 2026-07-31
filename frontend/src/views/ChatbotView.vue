@@ -311,24 +311,32 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* Le chat est épinglé directement aux bords du viewport avec position:fixed
+   plutôt que de dépendre d'une hauteur calculée à travers .app-content
+   (grid) > .chatbot-container (flex) > .active-chat-section (flex) : cette
+   chaîne est fragile (vh vs dvh, min-height:auto implicite des items de
+   grille) et laissait parfois toute la page défiler au lieu de seulement
+   la conversation, faisant disparaître le header et décoller la barre de
+   saisie de la nav bar. Fixed = comportement garanti quel que soit l'état
+   des parents.
+   Décalage à droite de 280px sur desktop pour laisser la place à la
+   sidebar principale (.app-sidebar), et 68px en bas sur mobile pour la
+   barre de navigation (.app-bottom-bar). */
 .chatbot-container {
-  height: 100vh;
-  height: 100dvh;
-  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 68px;
+  width: auto;
   display: flex;
   overflow: hidden;
 }
 
-/* Sur mobile, .app-content réserve 78px en bas pour la barre de navigation :
-   sans en tenir compte ici, le chat exigeait 100vh en plus de cette réserve,
-   ce qui rendait toute la page ~78px plus haute que l'écran. On utilise
-   100dvh (dynamic viewport height) plutôt que 100vh : sur mobile, 100vh
-   inclut la zone masquée par la barre d'adresse du navigateur, ce qui
-   pouvait pousser la barre de saisie sous la nav bar. */
-@media (max-width: 767px) {
+@media (min-width: 768px) {
   .chatbot-container {
-    height: calc(100vh - 78px);
-    height: calc(100dvh - 78px);
+    left: 280px;
+    bottom: 0;
   }
 }
 

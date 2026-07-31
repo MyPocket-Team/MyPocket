@@ -2,8 +2,10 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "../services/api";
+import { useDialog } from "../composables/useDialog";
 
 const router = useRouter();
+const { confirmDialog } = useDialog();
 
 function goBack() {
   router.back();
@@ -71,7 +73,7 @@ async function fetchTransactions() {
 
 async function deleteTransaction(id) {
   closeMenu();
-  if (!confirm("Supprimer cette transaction ?")) return;
+  if (!(await confirmDialog("Supprimer cette transaction ?", { danger: true, confirmLabel: "Supprimer" }))) return;
 
   try {
     const res = await api.delete(`/transactions/${id}`);
@@ -386,7 +388,7 @@ onMounted(() => {
 
 .transaction-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   background-color: var(--color-paper-raised);
   border: 1px solid var(--color-border);
@@ -433,9 +435,8 @@ onMounted(() => {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--color-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  overflow-wrap: break-word;
 }
 
 .transaction-categorie {
@@ -447,6 +448,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .transaction-amount {

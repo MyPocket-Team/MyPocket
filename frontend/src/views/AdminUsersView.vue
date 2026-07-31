@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import api from "../services/api";
+import { useDialog } from "../composables/useDialog";
+
+const { confirmDialog } = useDialog();
 
 const users = ref([]);
 const searchQuery = ref("");
@@ -66,7 +69,7 @@ async function toggleUserStatus(user) {
 }
 
 async function deleteUser(id) {
-  if (!confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.")) {
+  if (!(await confirmDialog("Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.", { danger: true, confirmLabel: "Supprimer" }))) {
     return;
   }
 

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "./services/api";
+import DialogHost from "./components/DialogHost.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -464,5 +465,7 @@ async function markNotificationRead(id) {
         <router-view />
       </main>
     </div>
+
+    <DialogHost />
   </div>
 </template>

@@ -2,9 +2,11 @@
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
+import { useDialog } from "../composables/useDialog";
 
 const route = useRoute();
 const router = useRouter();
+const { confirmDialog } = useDialog();
 
 const transactionId = route.params.id;
 const transaction = ref({
@@ -30,7 +32,7 @@ function editTransaction() {
 }
 
 async function deleteTransaction() {
-  if (!confirm("Supprimer cette transaction ? Cette action est irréversible.")) {
+  if (!(await confirmDialog("Supprimer cette transaction ? Cette action est irréversible.", { danger: true, confirmLabel: "Supprimer" }))) {
     return;
   }
 

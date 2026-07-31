@@ -458,7 +458,7 @@ function goTo(routeName) {
 
 .transaction-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   padding: 12px;
   border-radius: 16px;
@@ -481,6 +481,7 @@ function goTo(routeName) {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .t-icon--revenu {
@@ -505,9 +506,8 @@ function goTo(routeName) {
   font-weight: 700;
   font-size: 0.92rem;
   color: var(--color-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  overflow-wrap: break-word;
 }
 
 .t-cat {
@@ -520,6 +520,7 @@ function goTo(routeName) {
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 .t-amount {

@@ -2,9 +2,11 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../services/api";
+import { useDialog } from "../composables/useDialog";
 
 const router = useRouter();
 const route = useRoute();
+const { confirmDialog, alertDialog } = useDialog();
 
 function goBack() {
   router.back();
@@ -99,23 +101,23 @@ async function savePlannedTransaction() {
     showPlanTxModal.value = false;
     fetchCategories();
   } catch (e) {
-    alert(e.response?.data?.message || "Impossible d'enregistrer la transaction planifiée.");
+    await alertDialog(e.response?.data?.message || "Impossible d'enregistrer la transaction planifiée.");
   }
 }
 
 async function deletePlannedTransaction(id) {
-  if (!confirm("Supprimer cette transaction planifiée ? Cette action est irréversible.")) return;
+  if (!(await confirmDialog("Supprimer cette transaction planifiée ? Cette action est irréversible.", { danger: true, confirmLabel: "Supprimer" }))) return;
 
   try {
     await api.delete(`/transactions-planifiees/${id}`);
     plannedTransactions.value = plannedTransactions.value.filter((t) => t.id !== id);
   } catch (e) {
-    alert(e.response?.data?.message || "Impossible de supprimer la transaction planifiée.");
+    await alertDialog(e.response?.data?.message || "Impossible de supprimer la transaction planifiée.");
   }
 }
 
 async function confirmPlannedTransaction(tx, event) {
-  if (!confirm("Confirmer la réalisation de cette transaction ? Elle sera enregistrée comme une transaction réelle.")) {
+  if (!(await confirmDialog("Confirmer la réalisation de cette transaction ? Elle sera enregistrée comme une transaction réelle.", { confirmLabel: "Confirmer" }))) {
     if (event) event.target.checked = false;
     return;
   }
@@ -136,7 +138,7 @@ async function confirmPlannedTransaction(tx, event) {
     // on rafraîchit la liste pour que l'en-tête reflète le nouveau statut.
     await fetchPlannings();
   } catch (e) {
-    alert(e.response?.data?.message || "Impossible de réaliser la transaction.");
+    await alertDialog(e.response?.data?.message || "Impossible de réaliser la transaction.");
     if (event) event.target.checked = false;
   }
 }
@@ -268,14 +270,14 @@ async function savePlanningDetails() {
     }
     showPlanningModal.value = false;
   } catch (e) {
-    alert(e.response?.data?.message || "Impossible d'enregistrer le planning.");
+    await alertDialog(e.response?.data?.message || "Impossible d'enregistrer le planning.");
   }
 }
 
 async function deletePlanning(id) {
   const planning = plannings.value.find((p) => p.id === id);
   if (!planning) return;
-  if (!confirm(`Supprimer le planning "${planning.titre}" ? Cette action est irréversible.`)) return;
+  if (!(await confirmDialog(`Supprimer le planning "${planning.titre}" ? Cette action est irréversible.`, { danger: true, confirmLabel: "Supprimer" }))) return;
 
   try {
     await api.delete(`/plannings/${id}`);
@@ -284,13 +286,13 @@ async function deletePlanning(id) {
       activePlanningId.value = plannings.value.length ? plannings.value[0].id : null;
     }
   } catch (e) {
-    alert(e.response?.data?.message || "Impossible de supprimer le planning.");
+    await alertDialog(e.response?.data?.message || "Impossible de supprimer le planning.");
   }
 }
 
 async function cancelPlanning(planning) {
   if (!planning) return;
-  if (!confirm("Annuler ce planning ?")) return;
+  if (!(await confirmDialog("Annuler ce planning ?", { confirmLabel: "Annuler le planning" }))) return;
 
   try {
     await api.post(`/plannings/${planning.id}/annuler`);
@@ -299,7 +301,7 @@ async function cancelPlanning(planning) {
       plannings.value[index].statut = "annule";
     }
   } catch (e) {
-    alert(e.response?.data?.message || "Impossible d'annuler le planning.");
+    await alertDialog(e.response?.data?.message || "Impossible d'annuler le planning.");
   }
 }
 
