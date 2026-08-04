@@ -15,6 +15,14 @@ class ValidateExtractionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Si fourni, rattache les entrées "en_attente" à un planning existant au lieu
+            // d'en créer un nouveau (utilisé par la saisie IA depuis la page Planning).
+            'planning_id' => [
+                'nullable',
+                Rule::exists('plannings', 'id')->where(function ($query) {
+                    $query->where('user_id', $this->user()->id);
+                }),
+            ],
             'entries' => ['required', 'array', 'min:1'],
             'entries.*.statut' => ['required', 'in:realise,en_attente'],
             'entries.*.montant' => ['required', 'numeric', 'min:0.01'],
@@ -31,7 +39,7 @@ class ValidateExtractionRequest extends FormRequest
                 }),
             ],
             'entries.*.nouvelle_categorie' => ['nullable', 'string', 'max:255'],
-            'entries.*.source' => ['nullable', 'in:manuel,ia_recu,ia_audio'],
+            'entries.*.source' => ['nullable', 'in:manuel,ia_recu,ia_audio,texte'],
         ];
     }
 }

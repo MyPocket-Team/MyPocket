@@ -69,7 +69,9 @@ class AudioController extends Controller
             'file_path' => $chemin,
         ]);
 
-        ProcessAudioJob::dispatch($request->user(), $chemin, $traitementId);
+        // Exécution synchrone : évite toute dépendance à un worker de file d'attente
+        // (`queue:work`) qui pourrait ne pas tourner en production.
+        ProcessAudioJob::dispatchSync($request->user(), $chemin, $traitementId);
 
         return response()->json([
             'message' => 'Audio envoyé pour analyse.',

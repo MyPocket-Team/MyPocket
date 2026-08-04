@@ -36,5 +36,12 @@ COPY --from=vendor /app/vendor/ /var/www/vendor/
 
 EXPOSE 8000
 
-# Démarrage avec la bonne interprétation du port dynamique de Render
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+# Démarrage :
+# - recrée le lien symbolique public/storage -> storage/app/public à chaque démarrage
+#   (nécessaire pour que les photos de profil et autres fichiers publics soient servis ;
+#   le dépôt contient un dossier public/storage vide qui doit être remplacé par le lien) ;
+# - lance le planificateur Laravel (`schedule:work`) en tâche de fond pour que les
+#   commandes programmées (rappels de planning, alertes de seuil) s'exécutent réellement,
+#   ce qui n'était pas le cas auparavant faute de tout déclencheur de `schedule:run` ;
+# - lance enfin le serveur HTTP avec la bonne interprétation du port dynamique de Render.
+CMD ["sh", "-c", "rm -rf public/storage && php artisan storage:link && (php artisan schedule:work &) && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]

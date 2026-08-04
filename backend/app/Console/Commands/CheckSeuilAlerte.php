@@ -25,26 +25,27 @@ class CheckSeuilAlerte extends Command
                 // Ratio du solde restant par rapport au solde initial
                 $ratioRestant = $soldeActuel / $soldeInitial;
 
-                // 1. Alerte Seuil Critique : 90% consommé (10% ou moins restant)
-                if ($ratioRestant <= 0.10) {
-                    $dejaAlerteCritique = $user->notifications()
-                        ->where('type', 'seuil_critique_90')
+                // 1. Alerte à 90% du solde initial
+                if ($ratioRestant <= 0.90) {
+                    $dejaAlerte90 = $user->notifications()
+                        ->where('type', 'seuil_avertissement_90')
                         ->where('lue', false)
                         ->exists();
 
-                    if (! $dejaAlerteCritique) {
+                    if (! $dejaAlerte90) {
                         $notificationService->creer(
                             $user->id,
-                            "Alerte Solde Critique (90% utilisé)",
-                            "Attention : Votre solde actuel est inférieur à 10% de votre solde initial !",
-                            "seuil_critique_90"
+                            "Alerte Solde (90%)",
+                            "Votre solde actuel est descendu à 90% (ou moins) de votre solde initial.",
+                            "seuil_avertissement_90"
                         );
                         $this->info("Alerte seuil 90% créée pour l'utilisateur #{$user->id}.");
                         $count++;
                     }
                 }
-                // 2. Alerte Seuil Intermédiaire : 50% consommé (entre 10% et 50% restant)
-                elseif ($ratioRestant <= 0.50) {
+
+                // 2. Alerte à 50% du solde initial (indépendante de la précédente)
+                if ($ratioRestant <= 0.50) {
                     $dejaAlerte50 = $user->notifications()
                         ->where('type', 'seuil_avertissement_50')
                         ->where('lue', false)
@@ -53,8 +54,8 @@ class CheckSeuilAlerte extends Command
                     if (! $dejaAlerte50) {
                         $notificationService->creer(
                             $user->id,
-                            "Alerte Solde 50%",
-                            "Attention, vous avez consommé la moitié (50%) de votre solde initial.",
+                            "Alerte Solde Critique (50%)",
+                            "Attention, votre solde actuel est descendu à 50% (ou moins) de votre solde initial.",
                             "seuil_avertissement_50"
                         );
                         $this->info("Alerte seuil 50% créée pour l'utilisateur #{$user->id}.");

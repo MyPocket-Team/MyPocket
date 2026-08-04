@@ -44,6 +44,17 @@ function editTransaction(id) {
   router.push({ name: "add-transaction", query: { edit: id } });
 }
 
+const sourceLabels = {
+  manuel: "Manuel",
+  ia_recu: "Scan",
+  ia_audio: "Audio",
+  texte: "Texte",
+};
+
+function sourceLabel(source) {
+  return sourceLabels[source] || "Manuel";
+}
+
 // Correction Problème 7 : Formatage lisible de la date du jour du groupe
 function formatDate(dateStr) {
   if (!dateStr) return "";
@@ -222,7 +233,7 @@ onMounted(() => {
               <span class="transaction-categorie">
                 {{ t.categorie }}
                 <!-- Correction Problème 7 : Badge de la source de saisie -->
-                <small class="source-tag">({{ t.sourceSaisie }})</small>
+                <small class="source-tag">({{ sourceLabel(t.sourceSaisie) }})</small>
               </span>
             </div>
 

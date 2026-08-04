@@ -25,6 +25,7 @@ class User extends Authenticatable
         'profil_complete',
         'actif',
         'solde_initial',
+        'solde_initial_date',
         'solde_actuel',
     ];
 
@@ -42,6 +43,7 @@ class User extends Authenticatable
             'actif' => 'boolean',
             'seuil_alerte' => 'float',
             'solde_initial' => 'decimal:2',
+            'solde_initial_date' => 'date',
             'solde_actuel' => 'decimal:2',
         ];
     }

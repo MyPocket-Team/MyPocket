@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import api from "./services/api";
+import api, { formatStorageUrl } from "./services/api";
 import DialogHost from "./components/DialogHost.vue";
 import { useNotifications } from "./composables/useNotifications";
 
@@ -15,10 +15,7 @@ const sidebarInitials = ref("U");
 const sidebarPhoto = ref("");
 const adminName = ref("Admin");
 
-function formatPhotoUrl(path) {
-  if (!path) return "";
-  return path.startsWith("http") ? path : `http://localhost:8000/storage/${path}`;
-}
+const formatPhotoUrl = formatStorageUrl;
 
 function loadSidebarProfile() {
   const profileRaw = localStorage.getItem("mypocket_profile");

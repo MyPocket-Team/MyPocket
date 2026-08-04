@@ -16,25 +16,36 @@ const repartition = ref([]);
 const loading = ref(true);
 const error = ref("");
 
-const categoryColors = {
-  Alimentation: "#10b981",
-  Transport: "#6366f1",
-  Logement: "#f59e0b",
-  Divertissement: "#ec4899",
-  Santé: "#ef4444",
-  Autre: "#94a3b8",
-};
+// Palette étendue et déterministe (basée sur le nom de la catégorie) : contrairement à
+// une table figée de 6 couleurs, ça garantit une couleur distincte même quand
+// l'utilisateur a créé beaucoup de catégories personnalisées.
+const PALETTE = [
+  "#10b981", "#6366f1", "#f59e0b", "#ec4899", "#ef4444",
+  "#0ea5e9", "#8b5cf6", "#14b8a6", "#f97316", "#84cc16",
+  "#06b6d4", "#d946ef", "#eab308", "#22c55e", "#64748b",
+];
+
+function colorForCategory(nom, index) {
+  if (!nom) return PALETTE[PALETTE.length - 1];
+  let hash = 0;
+  for (let i = 0; i < nom.length; i++) {
+    hash = (hash * 31 + nom.charCodeAt(i)) >>> 0;
+  }
+  return PALETTE[(hash + index) % PALETTE.length];
+}
 
 const fetchStats = async () => {
   loading.value = true;
   error.value = "";
 
   try {
-    const overviewRes = await api.get("/dashboard/overview");
+    const [overviewRes, evolutionRes, repartitionRes] = await Promise.all([
+      api.get("/dashboard/overview"),
+      api.get("/dashboard/evolution-solde"),
+      api.get("/dashboard/repartition-categories"),
+    ]);
     overview.value = overviewRes.data;
-    const evolutionRes = await api.get("/dashboard/evolution-solde");
     evolution.value = evolutionRes.data.evolution || [];
-    const repartitionRes = await api.get("/dashboard/repartition-categories");
     repartition.value = repartitionRes.data.repartition || [];
   } catch (e) {
     error.value = e.response?.data?.message || "Impossible de charger les statistiques.";
@@ -48,25 +59,46 @@ const soldeActuel = computed(() => overview.value?.solde_actuel ?? 0);
 const evolutionPoints = computed(() => {
   return evolution.value.map((t) => ({
     ...t,
-    label: new Date(t.date).toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "short",
-    }),
+    label: t.initial
+      ? "Départ"
+      : new Date(t.date).toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "short",
+        }),
   }));
 });
 
+// Répartition en pourcentages dont la somme fait toujours exactement 100 %, même avec
+// beaucoup de catégories : on arrondit chaque part à l'entier inférieur puis on
+// redistribue les points manquants aux catégories ayant le plus gros reste
+// (méthode du plus fort reste), au lieu d'arrondir chaque valeur indépendamment.
 const categoriesExpenses = computed(() => {
-  const total = repartition.value.reduce((sum, item) => sum + item.total, 0);
+  const total = repartition.value.reduce((sum, item) => sum + Number(item.total || 0), 0);
   if (total === 0) return [];
 
-  return repartition.value
-    .map((item) => ({
+  const items = repartition.value.map((item, index) => {
+    const amount = Number(item.total || 0);
+    const exact = (amount / total) * 100;
+    return {
       name: item.nom || "Autre",
-      amount: item.total,
-      color: categoryColors[item.nom] || categoryColors.Autre,
-      percentage: Math.round((item.total / total) * 100),
-    }))
-    .sort((a, b) => b.amount - a.amount);
+      amount,
+      color: colorForCategory(item.nom, index),
+      percentage: Math.floor(exact),
+      remainder: exact - Math.floor(exact),
+    };
+  });
+
+  let allouePct = items.reduce((sum, item) => sum + item.percentage, 0);
+  let restant = 100 - allouePct;
+
+  [...items]
+    .sort((a, b) => b.remainder - a.remainder)
+    .slice(0, restant)
+    .forEach((item) => {
+      item.percentage += 1;
+    });
+
+  return items.sort((a, b) => b.amount - a.amount);
 });
 
 const chartWidth = 500;

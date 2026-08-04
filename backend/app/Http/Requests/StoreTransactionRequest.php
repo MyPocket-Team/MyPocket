@@ -27,7 +27,7 @@ class StoreTransactionRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:255'],
             'date_transaction' => ['required', 'date'],
             'type' => ['required', 'in:revenu,depense'],
-            'source' => ['nullable', 'in:manuel,ia_recu,ia_audio'],
+            'source' => ['nullable', 'in:manuel,ia_recu,ia_audio,texte'],
             'nouvelle_categorie' => ['nullable', 'string', 'max:255'],
         ];
     }

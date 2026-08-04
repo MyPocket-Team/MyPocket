@@ -59,11 +59,24 @@ class Planning extends Model
     }
 
     // Helpers
+    /**
+     * Lie ce planning à une transaction réelle. Le statut ne passe à "realise" que si
+     * le planning n'a aucune transaction planifiée en attente (sinon on attendra que
+     * PlannedTransactionController::confirmer/destroy fasse passer le statut une fois
+     * que 100% des transactions planifiées sont réalisées).
+     */
     public function lierATransaction(Transaction $transaction): void
     {
-        $this->update([
-            'transaction_id' => $transaction->id,
-            'statut' => 'realise',
-        ]);
+        $update = ['transaction_id' => $transaction->id];
+
+        $aDesTransactionsPlanifiees = $this->plannedTransactions()->exists();
+        $toutesRealisees = $aDesTransactionsPlanifiees
+            && ! $this->plannedTransactions()->where('statut', '!=', 'realise')->exists();
+
+        if (! $aDesTransactionsPlanifiees || $toutesRealisees) {
+            $update['statut'] = 'realise';
+        }
+
+        $this->update($update);
     }
 }

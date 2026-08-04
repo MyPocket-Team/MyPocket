@@ -40,6 +40,37 @@ const planTxCategoryId = ref("");
 const planTxCustomCategory = ref("");
 const planTxDueDate = ref("");
 
+// ── Saisie assistée (texte / audio / scanner) pour "Planifier une transaction" ──
+const ptxMode = ref("manual"); // "manual" | "text" | "audio" | "scan"
+const ptxProcessing = ref(false);
+const ptxError = ref("");
+const ptxFreeText = ref("");
+const ptxAudioState = ref("idle");
+const ptxFileInput = ref(null);
+const ptxReviewMode = ref(false);
+const ptxReviewSource = ref(null); // 'text' | 'recu' | 'audio'
+const ptxReviewTraitementId = ref(null);
+const ptxReviewItems = ref([]);
+const ptxReviewSubmitting = ref(false);
+
+function resetPtxAssistState() {
+  ptxMode.value = "manual";
+  ptxProcessing.value = false;
+  ptxError.value = "";
+  ptxFreeText.value = "";
+  ptxAudioState.value = "idle";
+  ptxReviewMode.value = false;
+  ptxReviewSource.value = null;
+  ptxReviewTraitementId.value = null;
+  ptxReviewItems.value = [];
+  ptxReviewSubmitting.value = false;
+}
+
+function selectPtxMode(newMode) {
+  ptxMode.value = newMode;
+  ptxError.value = "";
+}
+
 function openPlanTxModal() {
   planTxAmount.value = "";
   planTxDescription.value = "";
@@ -49,11 +80,237 @@ function openPlanTxModal() {
   if (categories.value.length) {
     planTxCategoryId.value = categories.value[0].id;
   }
+  resetPtxAssistState();
   showPlanTxModal.value = true;
 }
 
 function closePlanTxModal() {
   showPlanTxModal.value = false;
+  resetPtxAssistState();
+}
+
+function buildPtxReviewItems(transactions, source) {
+  return transactions.map((t) => {
+    let categorie_id = "";
+    let nouvelle_categorie = "";
+    const catName = t.categorie_suggeree;
+    if (catName) {
+      const found = categories.value.find(
+        (c) => c.nom && c.nom.toLowerCase() === catName.toLowerCase()
+      );
+      if (found) {
+        categorie_id = found.id;
+      } else {
+        nouvelle_categorie = catName;
+      }
+    }
+    return {
+      montant: t.montant ?? "",
+      description: t.description ?? "",
+      type: t.type === "revenu" ? "revenu" : "depense",
+      date_transaction: t.date || new Date().toISOString().slice(0, 10),
+      categorie_id,
+      nouvelle_categorie,
+      source,
+    };
+  });
+}
+
+function removePtxReviewItem(index) {
+  ptxReviewItems.value.splice(index, 1);
+}
+
+function cancelPtxReview() {
+  ptxReviewMode.value = false;
+  ptxReviewItems.value = [];
+  ptxMode.value = "manual";
+}
+
+async function ptxPollStatus(traitementId, isAudio = false) {
+  const url = isAudio ? `/audios/${traitementId}/statut` : `/recus/${traitementId}/statut`;
+  let attempts = 0;
+  const maxAttempts = 30; // 30 x 2s = 60s max
+
+  const interval = setInterval(async () => {
+    attempts += 1;
+    try {
+      const res = await api.get(url);
+      if (res.data.status === "termine") {
+        clearInterval(interval);
+        ptxProcessing.value = false;
+
+        const extracted = res.data.data;
+        const transactions = Array.isArray(extracted?.transactions) ? extracted.transactions : [];
+
+        if (!transactions.length) {
+          ptxError.value = "Aucune transaction n'a pu être détectée. Réessaie ou saisis manuellement.";
+          ptxMode.value = "manual";
+          return;
+        }
+
+        ptxReviewItems.value = buildPtxReviewItems(transactions, isAudio ? "ia_audio" : "ia_recu");
+        ptxReviewSource.value = isAudio ? "audio" : "recu";
+        ptxReviewTraitementId.value = traitementId;
+        ptxReviewMode.value = true;
+      } else if (res.data.status === "echec") {
+        clearInterval(interval);
+        ptxProcessing.value = false;
+        ptxError.value = res.data.message || "L'extraction a échoué.";
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        ptxProcessing.value = false;
+        ptxError.value = "L'analyse prend trop de temps. Réessaie ou saisis manuellement.";
+      }
+    } catch (e) {
+      clearInterval(interval);
+      ptxProcessing.value = false;
+      ptxError.value = "Erreur lors du suivi du traitement.";
+    }
+  }, 2000);
+}
+
+let ptxMediaRecorder = null;
+let ptxAudioChunks = [];
+
+async function ptxStartAudio() {
+  ptxAudioState.value = "recording";
+  ptxAudioChunks = [];
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    ptxMediaRecorder = new MediaRecorder(stream);
+    ptxMediaRecorder.ondataavailable = (event) => {
+      ptxAudioChunks.push(event.data);
+    };
+    ptxMediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(ptxAudioChunks, { type: "audio/webm" });
+      ptxProcessing.value = true;
+      ptxError.value = "";
+      try {
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "recording.webm");
+        const res = await api.post("/audios/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        ptxPollStatus(res.data.traitement_id, true);
+      } catch (e) {
+        ptxProcessing.value = false;
+        ptxError.value = e.response?.data?.message || "Erreur lors de l'envoi de l'audio.";
+      }
+    };
+    ptxMediaRecorder.start();
+
+    setTimeout(() => {
+      if (ptxMediaRecorder && ptxMediaRecorder.state === "recording") {
+        ptxMediaRecorder.stop();
+        stream.getTracks().forEach((track) => track.stop());
+        ptxAudioState.value = "idle";
+      }
+    }, 4000);
+  } catch (e) {
+    ptxAudioState.value = "idle";
+    ptxError.value = "Impossible d'accéder au microphone.";
+  }
+}
+
+function ptxTriggerFilePicker() {
+  ptxFileInput.value?.click();
+}
+
+async function ptxHandleFileChange(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  ptxProcessing.value = true;
+  ptxError.value = "";
+  try {
+    const formData = new FormData();
+    formData.append("photo", file);
+    const res = await api.post("/recus/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    ptxPollStatus(res.data.traitement_id, false);
+  } catch (e) {
+    ptxProcessing.value = false;
+    ptxError.value = e.response?.data?.message || "Erreur lors de l'envoi du reçu.";
+  }
+}
+
+async function ptxAnalyzeText() {
+  if (!ptxFreeText.value.trim()) return;
+  ptxProcessing.value = true;
+  ptxError.value = "";
+  try {
+    const res = await api.post("/transactions/parse-text", { texte: ptxFreeText.value });
+    const transactions = Array.isArray(res.data.transactions) ? res.data.transactions : [];
+
+    if (!transactions.length) {
+      ptxError.value = "Aucune transaction détectée dans ce texte.";
+      return;
+    }
+
+    ptxReviewItems.value = buildPtxReviewItems(transactions, "texte");
+    ptxReviewSource.value = "text";
+    ptxReviewTraitementId.value = null;
+    ptxReviewMode.value = true;
+  } catch (e) {
+    ptxError.value = "Erreur lors de l'analyse du texte.";
+  } finally {
+    ptxProcessing.value = false;
+  }
+}
+
+async function submitPtxReview() {
+  ptxError.value = "";
+  if (!ptxReviewItems.value.length) return;
+
+  for (const item of ptxReviewItems.value) {
+    if (!item.montant || isNaN(parseFloat(item.montant)) || parseFloat(item.montant) <= 0) {
+      ptxError.value = "Chaque transaction doit avoir un montant valide.";
+      return;
+    }
+    if (!item.categorie_id && !item.nouvelle_categorie.trim()) {
+      ptxError.value = "Choisis une catégorie pour chaque transaction.";
+      return;
+    }
+  }
+
+  ptxReviewSubmitting.value = true;
+  try {
+    const entries = ptxReviewItems.value.map((item) => ({
+      statut: "en_attente",
+      montant: parseFloat(item.montant),
+      type: item.type,
+      description: item.description?.trim() || null,
+      date_transaction: item.date_transaction,
+      ...(item.categorie_id
+        ? { categorie_id: item.categorie_id }
+        : { nouvelle_categorie: item.nouvelle_categorie.trim() }),
+      source: item.source,
+    }));
+
+    const url =
+      ptxReviewSource.value === "recu"
+        ? `/recus/${ptxReviewTraitementId.value}/valider`
+        : ptxReviewSource.value === "audio"
+        ? `/audios/${ptxReviewTraitementId.value}/valider`
+        : "/transactions/valider-extraction";
+
+    await api.post(url, { entries, planning_id: activePlanningId.value });
+
+    if (ptxReviewTraitementId.value) {
+      await api.patch(`/traitements/${ptxReviewTraitementId.value}/finaliser`);
+    }
+
+    showPlanTxModal.value = false;
+    resetPtxAssistState();
+    await fetchPlannedTransactions(activePlanningId.value);
+    await fetchCategories();
+  } catch (e) {
+    ptxError.value = e.response?.data?.message || "Impossible d'enregistrer les transactions.";
+  } finally {
+    ptxReviewSubmitting.value = false;
+  }
 }
 
 async function fetchPlannedTransactions(planningId) {
@@ -378,12 +635,15 @@ onMounted(() => {
       <!-- Détail du planning actif -->
       <section class="planning-detail">
         <template v-if="activePlanning">
-          <!-- Planning Header Details Card -->
+          <!-- Planning Header Card : titre, description, statut et actions -->
           <section class="planning-header-card glass-panel">
             <div class="header-display">
               <div class="header-main-info">
                 <h2 class="planning-main-title">{{ activePlanning.titre }}</h2>
                 <p class="planning-main-description">{{ activePlanning.description || "Aucune description." }}</p>
+                <p v-if="activePlanning.date_prevue" class="planning-echeance">
+                  Échéance : {{ formatDateFr(activePlanning.date_prevue) }}
+                </p>
               </div>
               <button type="button" class="new-planning-header-btn" @click="openCreatePlanningModal">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -393,46 +653,25 @@ onMounted(() => {
                 Nouveau planning
               </button>
             </div>
-          </section>
 
-          <!-- Planning Details Section -->
-          <section class="planning-detail-card glass-panel">
-            <div class="planning-detail-content">
-              <h2 class="section-title">Détails du planning</h2>
-              <p class="section-subtitle">Gère ton objectif financier et suis son évolution.</p>
-
-              <div v-if="activePlanning.date_prevue" class="planning-detail-row">
-                <span class="planning-detail-label">Échéance</span>
-                <strong>{{ formatDateFr(activePlanning.date_prevue) }}</strong>
-              </div>
-              <div class="planning-detail-row">
-                <span class="planning-detail-label">Statut</span>
-                <span class="status-badge" :class="`status-badge--${activePlanning.statut}`">
-                  {{ statutLabels[activePlanning.statut] || activePlanning.statut }}
-                </span>
-              </div>
-
-              <div v-if="activePlanning.transaction" class="planning-detail-row planning-linked-transaction">
-                <span class="planning-detail-label">Transaction liée</span>
-                <strong>{{ activePlanning.transaction.description || 'Transaction liée' }}</strong>
-              </div>
-
-              <div class="planning-actions">
-                <button type="button" class="edit-header-btn" @click="openEditPlanningModal">
-                  Modifier
-                </button>
-                <button
-                  v-if="activePlanning.statut === 'en_attente'"
-                  type="button"
-                  class="cancel-btn"
-                  @click="cancelPlanning(activePlanning)"
-                >
-                  Annuler
-                </button>
-                <button type="button" class="delete-btn" @click="deletePlanning(activePlanning.id)">
-                  Supprimer
-                </button>
-              </div>
+            <div class="planning-actions">
+              <span class="status-badge status-badge--pill" :class="`status-badge--${activePlanning.statut}`">
+                {{ statutLabels[activePlanning.statut] || activePlanning.statut }}
+              </span>
+              <button type="button" class="edit-header-btn" @click="openEditPlanningModal">
+                Modifier
+              </button>
+              <button
+                v-if="activePlanning.statut === 'en_attente'"
+                type="button"
+                class="cancel-btn"
+                @click="cancelPlanning(activePlanning)"
+              >
+                Annuler
+              </button>
+              <button type="button" class="delete-btn" @click="deletePlanning(activePlanning.id)">
+                Supprimer
+              </button>
             </div>
           </section>
 
@@ -599,7 +838,143 @@ onMounted(() => {
           </button>
         </div>
 
-        <form class="modal-form" @submit.prevent="savePlannedTransaction">
+        <!-- Sélecteur de mode de saisie -->
+        <div v-if="!ptxReviewMode" class="ptx-mode-row">
+          <button type="button" class="ptx-mode-btn" :class="{ 'ptx-mode-btn--active': ptxMode === 'manual' }" @click="selectPtxMode('manual')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Manuel
+          </button>
+          <button type="button" class="ptx-mode-btn" :class="{ 'ptx-mode-btn--active': ptxMode === 'text' }" @click="selectPtxMode('text')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 6h16M4 12h10M4 18h13" />
+            </svg>
+            Texte
+          </button>
+          <button type="button" class="ptx-mode-btn" :class="{ 'ptx-mode-btn--active': ptxMode === 'audio' }" @click="selectPtxMode('audio')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" />
+              <path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8" />
+            </svg>
+            Audio
+          </button>
+          <button type="button" class="ptx-mode-btn" :class="{ 'ptx-mode-btn--active': ptxMode === 'scan' }" @click="selectPtxMode('scan')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3" />
+              <circle cx="12" cy="12" r="3.5" />
+            </svg>
+            Scanner
+          </button>
+        </div>
+
+        <!-- Panneaux de saisie assistée -->
+        <div v-if="ptxMode === 'text' && !ptxReviewMode" class="ptx-assist-panel">
+          <div class="ptx-input-with-button">
+            <input
+              v-model="ptxFreeText"
+              type="text"
+              placeholder="Ex : Loyer de 25000 FCFA le 5 du mois prochain"
+              class="form-input"
+              :disabled="ptxProcessing"
+              @keyup.enter="ptxAnalyzeText"
+            />
+            <button type="button" class="save-btn-modal" @click="ptxAnalyzeText" :disabled="ptxProcessing || !ptxFreeText.trim()">
+              Analyser
+            </button>
+          </div>
+        </div>
+
+        <div v-else-if="ptxMode === 'audio' && !ptxReviewMode" class="ptx-assist-panel ptx-assist-panel--center">
+          <template v-if="ptxAudioState === 'idle' && !ptxProcessing">
+            <button type="button" class="ptx-record-btn" @click="ptxStartAudio">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="2" width="6" height="12" rx="3" />
+                <path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8" />
+              </svg>
+            </button>
+            <p class="ptx-hint">Appuie pour décrire ta transaction planifiée à l'oral</p>
+          </template>
+          <template v-else-if="ptxAudioState === 'recording'">
+            <div class="ptx-record-btn ptx-record-btn--active">
+              <span class="pulse"></span>
+            </div>
+            <p class="ptx-hint" style="color: var(--color-danger); font-weight: 600;">Écoute en cours...</p>
+          </template>
+        </div>
+
+        <div v-else-if="ptxMode === 'scan' && !ptxReviewMode" class="ptx-assist-panel ptx-assist-panel--center">
+          <input ref="ptxFileInput" type="file" accept="image/*,.heic,.heif" capture="environment" class="hidden-input" @change="ptxHandleFileChange" />
+          <button type="button" class="save-btn-modal" style="width: 100%;" @click="ptxTriggerFilePicker" :disabled="ptxProcessing">
+            Prendre une photo/Téléverser
+          </button>
+          <p class="ptx-hint">Scanne le reçu de la dépense/du revenu à planifier</p>
+        </div>
+
+        <div v-if="ptxProcessing" class="ptx-assist-panel ptx-assist-panel--center">
+          <span class="spinner"></span>
+          <p class="ptx-hint" style="font-style: italic;">Analyse en cours...</p>
+        </div>
+
+        <p v-if="ptxError && !ptxReviewMode" class="ptx-error">{{ ptxError }}</p>
+
+        <!-- Relecture des transactions planifiées détectées -->
+        <div v-if="ptxReviewMode" class="ptx-review">
+          <p class="ptx-hint" style="text-align: left; margin-bottom: 4px;">
+            {{ ptxReviewItems.length }} transaction(s) détectée(s) — vérifie puis planifie.
+          </p>
+
+          <div v-for="(item, i) in ptxReviewItems" :key="i" class="ptx-review-item">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div class="type-toggle" style="flex: 1; margin: 0 12px 0 0;">
+                <button type="button" class="type-btn type-btn--depense" :class="{ 'type-btn--active': item.type === 'depense' }" @click="item.type = 'depense'">Dépense</button>
+                <button type="button" class="type-btn type-btn--revenu" :class="{ 'type-btn--active': item.type === 'revenu' }" @click="item.type = 'revenu'">Revenu</button>
+              </div>
+              <button type="button" class="btn-icon btn-icon--danger" @click="removePtxReviewItem(i)" aria-label="Retirer cette transaction">✕</button>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Montant</label>
+              <input v-model="item.montant" type="number" step="0.01" min="0.01" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <input v-model="item.description" type="text" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Catégorie</label>
+              <select v-model="item.categorie_id" class="form-input">
+                <option value="">— Autre / nouvelle catégorie —</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.nom }}</option>
+              </select>
+              <input
+                v-if="!item.categorie_id"
+                v-model="item.nouvelle_categorie"
+                type="text"
+                placeholder="Nom de la catégorie"
+                class="form-input"
+                style="margin-top: 8px;"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date d'échéance</label>
+              <input v-model="item.date_transaction" type="date" class="form-input" />
+            </div>
+          </div>
+
+          <p v-if="ptxError" class="ptx-error">{{ ptxError }}</p>
+
+          <div class="modal-form-actions">
+            <button type="button" class="cancel-btn" @click="cancelPtxReview">Annuler</button>
+            <button type="button" class="save-btn-modal" :disabled="ptxReviewSubmitting || !ptxReviewItems.length" @click="submitPtxReview">
+              {{ ptxReviewSubmitting ? "Enregistrement..." : `Planifier (${ptxReviewItems.length})` }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulaire manuel (par défaut) -->
+        <form v-if="ptxMode === 'manual' && !ptxReviewMode" class="modal-form" @submit.prevent="savePlannedTransaction">
           <div class="form-group">
             <label class="form-label">Type</label>
             <div class="type-toggle">
@@ -919,6 +1294,19 @@ onMounted(() => {
   color: var(--color-ink-soft);
   margin: 0;
   line-height: 1.45;
+}
+
+.planning-echeance {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  margin: 8px 0 0;
+}
+
+.status-badge--pill {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
 }
 
 .new-planning-header-btn {
@@ -1469,6 +1857,140 @@ onMounted(() => {
   background-color: var(--color-primary);
   color: #fff;
   box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+}
+
+/* --- Saisie assistée (texte / audio / scanner) dans le modal "Planifier" --- */
+.ptx-mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.ptx-mode-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--color-bg-soft);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  padding: 10px 4px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--color-ink-soft);
+  transition: all 0.2s ease;
+}
+
+.ptx-mode-btn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+}
+
+.ptx-mode-btn--active {
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+  background-color: var(--color-primary-light);
+}
+
+.ptx-assist-panel {
+  margin-bottom: 18px;
+}
+
+.ptx-assist-panel--center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.ptx-input-with-button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ptx-hint {
+  font-size: 0.8rem;
+  color: var(--color-ink-soft);
+  font-weight: 500;
+  text-align: center;
+  margin: 0;
+}
+
+.ptx-error {
+  font-size: 0.85rem;
+  color: var(--color-danger);
+  text-align: center;
+  font-weight: 600;
+  padding: 10px;
+  background-color: rgba(239, 68, 68, 0.07);
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.ptx-record-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--color-danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.ptx-record-btn--active {
+  background-color: #dc2626;
+  box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.15);
+}
+
+.ptx-review {
+  display: flex;
+  flex-direction: column;
+}
+
+.ptx-review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--color-bg-soft);
+  border: 1.5px solid var(--color-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.pulse {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #fff;
+  animation: pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.5; }
+}
+
+.hidden-input {
+  display: none;
 }
 
 .modal-form-actions {

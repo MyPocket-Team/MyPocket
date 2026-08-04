@@ -5,13 +5,16 @@ import api from "../services/api";
 import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
-const solde = ref(0);
-const soldeInitial = ref(0);
+// Pré-remplissage depuis le cache local : affiche immédiatement la dernière valeur
+// connue au lieu d'un "0 FCFA" transitoire pendant que la requête réseau est en cours.
+const solde = ref(parseFloat(localStorage.getItem("mypocket_solde") || "0"));
+const soldeInitial = ref(parseFloat(localStorage.getItem("mypocket_initial_solde") || "0"));
 const userName = ref("Astride");
 
 const recentTransactions = ref([]);
 const monthlyStats = ref({ income: 0, expenses: 0 });
 const categoriesStats = ref([]);
+const loading = ref(true);
 
 async function loadDashboardData() {
   const profileRaw = localStorage.getItem("mypocket_profile");
@@ -20,17 +23,24 @@ async function loadDashboardData() {
     userName.value = profile.prenom || "Astride";
   }
 
+  // Requêtes en parallèle plutôt qu'en séquence : divise par ~2 le temps d'attente
+  // ressenti à chaque ouverture du tableau de bord.
+  loading.value = true;
   try {
-    const overviewRes = await api.get("/dashboard/overview");
+    const [overviewRes, txRes] = await Promise.all([
+      api.get("/dashboard/overview"),
+      api.get("/transactions"),
+    ]);
+
     const overview = overviewRes.data;
     solde.value = parseFloat(overview.solde_actuel || 0);
     soldeInitial.value = parseFloat(overview.solde_initial || 0);
-    
+
     monthlyStats.value = {
       income: parseFloat(overview.total_revenus_mois || 0),
       expenses: parseFloat(overview.total_depenses_mois || 0)
     };
-    
+
     if (overview.categories) {
       categoriesStats.value = overview.categories;
     }
@@ -38,7 +48,6 @@ async function loadDashboardData() {
     localStorage.setItem("mypocket_solde", solde.value.toString());
     localStorage.setItem("mypocket_initial_solde", soldeInitial.value.toString());
 
-    const txRes = await api.get("/transactions");
     const txList = txRes.data.data || txRes.data;
     recentTransactions.value = txList.slice(0, 5).map((t) => ({
       id: t.id,
@@ -56,6 +65,8 @@ async function loadDashboardData() {
     }));
   } catch (e) {
     console.error("Error loading dashboard data", e);
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -200,7 +211,11 @@ function goTo(routeName) {
             <button type="button" class="view-all-link" @click="goTo('history')">Voir tout</button>
           </div>
           
-          <div v-if="recentTransactions.length === 0" class="empty-state">
+          <div v-if="loading && recentTransactions.length === 0" class="empty-state">
+            <span class="spinner"></span>
+            <p>Chargement...</p>
+          </div>
+          <div v-else-if="recentTransactions.length === 0" class="empty-state">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-border);">
               <path d="M9 17H5a2 2 0 0 0-2 2" /><path d="M9 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v7a2 2 0 0 1-2 2h-4" /><path d="M17 22v-4M15 20h4" />
             </svg>
@@ -472,6 +487,19 @@ function goTo(routeName) {
   text-align: center;
   color: var(--color-ink-soft);
   font-size: 0.88rem;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .empty-cta {

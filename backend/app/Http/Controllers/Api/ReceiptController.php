@@ -6,7 +6,6 @@ use App\Jobs\ProcessReceiptJob;
 use App\Models\TraitementTranscription;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ReceiptController extends Controller
@@ -18,7 +17,11 @@ class ReceiptController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'photo' => ['required', 'image', 'max:8192'], // 8 Mo max
+            // 'image' (basé sur getimagesize) rejette souvent les HEIC/HEIF produits par
+            // l'appareil photo des iPhone : on valide plutôt par extension/mime tolérés,
+            // et on relève la taille max car les photos prises directement à la caméra
+            // sont nettement plus lourdes que des images téléversées depuis la galerie.
+            'photo' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,heic,heif', 'max:15360'], // 15 Mo max
         ]);
 
         $traitementId = (string) Str::uuid();
@@ -32,7 +35,10 @@ class ReceiptController extends Controller
             'file_path' => $chemin,
         ]);
 
-        ProcessReceiptJob::dispatch($request->user(), $chemin, $traitementId);
+        // Exécution synchrone : évite toute dépendance à un worker de file d'attente
+        // (`queue:work`) qui pourrait ne pas tourner en production, ce qui laissait
+        // certains reçus scannés bloqués indéfiniment en statut "en_cours" côté mobile.
+        ProcessReceiptJob::dispatchSync($request->user(), $chemin, $traitementId);
 
         return response()->json([
             'message' => 'Reçu envoyé pour analyse.',

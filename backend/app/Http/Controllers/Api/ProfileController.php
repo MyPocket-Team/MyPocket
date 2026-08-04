@@ -21,9 +21,17 @@ class ProfileController extends Controller
 
         $soldeInitialModifie = isset($data['solde_initial']) && $data['solde_initial'] != $user->solde_initial;
 
+        if ($soldeInitialModifie) {
+            // Mémorise la date à laquelle le solde de départ a été (re)défini, pour que
+            // le graphique d'évolution puisse démarrer sur ce point précis.
+            $data['solde_initial_date'] = now()->toDateString();
+        }
+
         if ($request->hasFile('photo')) {
-            // Récupère le disque cloud configuré (ex: s3, cloudinary) ou 'public' par défaut
-            $disk = config('filesystems.default', 'public');
+            // Toujours le disque "public" : contrairement à FILESYSTEM_DISK (utilisé pour
+            // les fichiers privés temporaires des reçus/audios), les photos de profil
+            // doivent toujours être servables publiquement via /storage/...
+            $disk = 'public';
 
             // Supprime l'ancienne photo si elle existe
             if ($user->photo && Storage::disk($disk)->exists($user->photo)) {

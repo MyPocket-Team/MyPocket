@@ -57,13 +57,24 @@ async function handleSubmit() {
 
 <style scoped>
 .forgot-container {
+  position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: radial-gradient(100% 100% at 50% 0%, rgba(209, 250, 229, 0.4) 0%, #f1f5f9 100%), var(--color-bg);
   padding: 24px;
   box-sizing: border-box;
+}
+
+.forgot-container::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.7) 100%),
+    url("/fond.jpg") center center / cover no-repeat;
 }
 
 .forgot-card {

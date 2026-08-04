@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import api from "../services/api";
+import api, { formatStorageUrl } from "../services/api";
 import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
@@ -21,10 +21,7 @@ const profil = ref({
 
 const initiales = ref("");
 
-const formatPhotoUrl = (path) => {
-  if (!path) return "";
-  return path.startsWith("http") ? path : `http://localhost:8000/storage/${path}`;
-};
+const formatPhotoUrl = formatStorageUrl;
 
 async function loadProfile() {
   const profileRaw = localStorage.getItem("mypocket_profile");

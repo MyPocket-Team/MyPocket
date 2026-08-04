@@ -15,7 +15,7 @@ class UserResource extends JsonResource
         if ($this->photo) {
             $photoUrl = str_starts_with($this->photo, 'http://') || str_starts_with($this->photo, 'https://')
                 ? $this->photo
-                : Storage::disk(config('filesystems.default', 'public'))->url($this->photo);
+                : Storage::disk('public')->url($this->photo);
         }
 
         return [

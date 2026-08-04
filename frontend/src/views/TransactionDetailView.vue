@@ -53,17 +53,15 @@ async function deleteTransaction() {
   }
 }
 
-function formatDate(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-}
-
 function sourceNote(source) {
   if (source === "ia_recu") {
     return "Cette transaction a été enregistrée automatiquement par reconnaissance d'image du reçu de caisse.";
   }
   if (source === "ia_audio") {
     return "Cette transaction a été enregistrée automatiquement par reconnaissance vocale.";
+  }
+  if (source === "texte") {
+    return "Cette transaction a été enregistrée automatiquement par analyse d'un texte libre (IA).";
   }
   return "Transaction enregistrée manuellement.";
 }
@@ -74,6 +72,9 @@ function methodLabel(source) {
   }
   if (source === "ia_audio") {
     return "Reconnaissance vocale (IA)";
+  }
+  if (source === "texte") {
+    return "Texte libre (IA)";
   }
   return "Saisie manuelle";
 }
@@ -256,6 +257,47 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  width: 100%;
+}
+
+.receipt-header-actions {
+  display: flex;
+  gap: 10px;
+  align-self: flex-end;
+  margin-bottom: 8px;
+}
+
+.action-secondary,
+.action-danger {
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 8px 16px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.action-secondary {
+  background-color: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+}
+
+.action-secondary:hover {
+  background-color: var(--color-border);
+}
+
+.action-danger {
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--color-danger);
+}
+
+.action-danger:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+.action-danger:disabled {
+  opacity: 0.6;
 }
 
 .badge-icon {

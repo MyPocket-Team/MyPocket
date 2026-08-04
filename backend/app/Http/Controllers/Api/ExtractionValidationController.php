@@ -28,7 +28,17 @@ class ExtractionValidationController extends Controller
             'planned_transactions' => [],
         ];
 
-        $planning = null;
+        // Si un planning_id est fourni (saisie IA depuis la page Planning), toutes les
+        // entrées sont rattachées à ce planning existant en tant que transactions
+        // planifiées, quel que soit le statut envoyé.
+        $planningExistant = null;
+        if (! empty($data['planning_id'])) {
+            $planningExistant = Planning::where('id', $data['planning_id'])
+                ->where('user_id', $request->user()->id)
+                ->first();
+        }
+
+        $planning = $planningExistant;
 
         foreach ($data['entries'] as $entry) {
             $categorieId = $entry['categorie_id'] ?? null;
@@ -41,7 +51,9 @@ class ExtractionValidationController extends Controller
                 $categorieId = $categorie->id;
             }
 
-            if ($entry['statut'] === 'realise') {
+            $statut = $planningExistant ? 'en_attente' : $entry['statut'];
+
+            if ($statut === 'realise') {
                 $transaction = Transaction::create([
                     'user_id' => $request->user()->id,
                     'categorie_id' => $categorieId,

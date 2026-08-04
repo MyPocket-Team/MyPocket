@@ -27,7 +27,7 @@ class UpdateTransactionRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:255'],
             'date_transaction' => ['nullable', 'date'],
             'type' => ['nullable', 'in:revenu,depense'],
-            'source' => ['nullable', 'in:manuel,ia_recu,ia_audio'],
+            'source' => ['nullable', 'in:manuel,ia_recu,ia_audio,texte'],
         ];
     }
 }

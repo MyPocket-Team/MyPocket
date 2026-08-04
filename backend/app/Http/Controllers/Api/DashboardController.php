@@ -56,10 +56,24 @@ class DashboardController extends Controller
             ->get(['date_transaction', 'solde_apres'])
             ->map(fn ($t) => [
                 'date' => $t->date_transaction->toDateString(),
-                'solde' => $t->solde_apres,
+                'solde' => (float) $t->solde_apres,
+                'initial' => false,
             ]);
 
-        return response()->json(['evolution' => $points]);
+        // Point de départ : le solde initial à la date où il a été défini, pour que le
+        // graphique montre bien "d'où on part" avant d'afficher l'évolution. Toujours
+        // inclus (même si antérieur à la période demandée) afin que le graphique ne soit
+        // jamais vide pour un utilisateur qui a initialisé son solde mais n'a pas encore
+        // de transaction dans la fenêtre par défaut.
+        $dateInitiale = $user->solde_initial_date?->toDateString() ?? $user->created_at->toDateString();
+
+        $points->prepend([
+            'date' => $dateInitiale,
+            'solde' => (float) $user->solde_initial,
+            'initial' => true,
+        ]);
+
+        return response()->json(['evolution' => $points->values()]);
     }
 
     /**

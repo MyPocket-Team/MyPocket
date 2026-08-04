@@ -8,6 +8,21 @@ use App\Models\User;
 
 class NotificationService
 {
+    /**
+     * Création générique d'une notification (utilisée par les alertes de seuil de solde).
+     */
+    public function creer(int $userId, string $titre, string $motif, string $type): Notification
+    {
+        return Notification::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'titre' => $titre,
+            'motif' => $motif,
+            'lue' => false,
+            'date_envoi' => now(),
+        ]);
+    }
+
     public function alerteSeuilBas(User $user): Notification
     {
         return Notification::create([

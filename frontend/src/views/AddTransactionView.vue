@@ -24,7 +24,6 @@ const pageTitle = computed(() => (isEditMode.value ? "Modifier la transaction" :
 
 // ── AI Assist State ──
 const isProcessing = ref(false);
-const isPrefilled = ref(false);
 const missingFields = ref([]);
 const freeText = ref("");
 const audioState = ref("idle");
@@ -186,14 +185,22 @@ function goBack() {
 function selectMode(newMode) {
   mode.value = newMode;
   error.value = "";
-  if (newMode === "manual") isPrefilled.value = false;
 }
 
 // ── Polling status helper ──
+// Le traitement (reçu/audio) tourne désormais de façon synchrone côté serveur, donc le
+// premier poll obtient généralement déjà le résultat final. On garde un polling court
+// avec un nombre d'essais limité (au lieu d'un setInterval infini) pour éviter que
+// l'utilisateur reste bloqué sur "Analyse en cours..." sans aucun message en cas de
+// souci réseau ou serveur.
+const POLL_MAX_ATTEMPTS = 30; // 30 x 2s = 60s max
+
 async function pollStatus(traitementId, isAudio = false) {
   const url = isAudio ? `/audios/${traitementId}/statut` : `/recus/${traitementId}/statut`;
+  let attempts = 0;
 
   const interval = setInterval(async () => {
+    attempts += 1;
     try {
       const res = await api.get(url);
       if (res.data.status === "termine") {
@@ -217,6 +224,10 @@ async function pollStatus(traitementId, isAudio = false) {
         clearInterval(interval);
         isProcessing.value = false;
         error.value = res.data.message || "L'extraction a échoué.";
+      } else if (attempts >= POLL_MAX_ATTEMPTS) {
+        clearInterval(interval);
+        isProcessing.value = false;
+        error.value = "L'analyse prend trop de temps. Réessaie ou saisis manuellement.";
       }
     } catch (e) {
       clearInterval(interval);
@@ -277,6 +288,9 @@ function triggerFilePicker() {
 
 async function handleFileChange(event) {
   const file = event.target.files?.[0];
+  // Permet de re-sélectionner la même photo (ex: nouvelle tentative après échec) :
+  // sans ça, le navigateur ne redéclenche pas l'évènement "change" pour un fichier identique.
+  event.target.value = "";
   if (!file) return;
 
   isProcessing.value = true;
@@ -297,7 +311,6 @@ async function handleFileChange(event) {
 async function analyzeText() {
   if (!freeText.value.trim()) return;
   isProcessing.value = true;
-  isPrefilled.value = false;
   error.value = "";
   try {
     const res = await api.post("/transactions/parse-text", { texte: freeText.value });
@@ -308,7 +321,7 @@ async function analyzeText() {
       return;
     }
 
-    reviewItems.value = buildReviewItems(transactions, "manuel");
+    reviewItems.value = buildReviewItems(transactions, "texte");
     reviewSource.value = "text";
     reviewTraitementId.value = null;
     reviewMode.value = true;
@@ -489,7 +502,7 @@ const isFormValid = computed(() => {
       </section>
 
       <section v-else-if="mode === 'scan' && !reviewMode" class="assist-section glass-panel">
-        <input ref="fileInput" type="file" accept="image/*" capture="environment" class="hidden-input" @change="handleFileChange" />
+        <input ref="fileInput" type="file" accept="image/*,.heic,.heif" capture="environment" class="hidden-input" @change="handleFileChange" />
         <button type="button" class="scan-btn" @click="triggerFilePicker" :disabled="isProcessing">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3" />
@@ -504,14 +517,6 @@ const isFormValid = computed(() => {
       <div v-if="isProcessing" class="processing-container glass-panel">
         <span class="spinner"></span>
         <p class="processing">Analyse en cours...</p>
-      </div>
-
-      <!-- AI prefilled note -->
-      <div v-if="isPrefilled && mode === 'manual'" class="prefilled-banner">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-        </svg>
-        Formulaire pré-rempli automatiquement — vérifie et enregistre.
       </div>
 
       <!-- Review multi-transactions -->
@@ -558,27 +563,6 @@ const isFormValid = computed(() => {
           <div class="input-group">
             <label class="input-label">Date</label>
             <input v-model="item.date_transaction" type="date" class="field" />
-          </div>
-          <div class="input-group">
-            <label class="input-label">Statut</label>
-            <div class="type-toggle">
-              <button
-                type="button"
-                class="type-btn"
-                :class="{ 'type-btn--active type-btn--revenu': item.statut === 'realise' }"
-                @click="item.statut = 'realise'"
-              >
-                Déjà effectuée
-              </button>
-              <button
-                type="button"
-                class="type-btn"
-                :class="{ 'type-btn--active type-btn--depense': item.statut === 'en_attente' }"
-                @click="item.statut = 'en_attente'"
-              >
-                Prévue (planning)
-              </button>
-            </div>
           </div>
         </div>
 
