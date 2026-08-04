@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Planning;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -29,6 +30,7 @@ class TransactionObserver
     public function created(Transaction $transaction): void
     {
         $this->recalculerChaines($transaction->user);
+        $this->checkPlanningCompletion($transaction); // Correction Problème 6
     }
 
     public function updating(Transaction $transaction): void
@@ -39,11 +41,13 @@ class TransactionObserver
     public function updated(Transaction $transaction): void
     {
         $this->recalculerChaines($transaction->user);
+        $this->checkPlanningCompletion($transaction); // Correction Problème 6
     }
 
     public function deleted(Transaction $transaction): void
     {
         $this->recalculerChaines($transaction->user);
+        $this->checkPlanningCompletion($transaction); // Correction Problème 6
     }
 
     protected function getPrecedente(Transaction $transaction): ?Transaction
@@ -93,28 +97,81 @@ class TransactionObserver
         $this->verifierSeuilAlerte($user->fresh());
     }
 
+    /**
+     * Correction Problème 6 :
+     * Met à jour le statut du planning uniquement si 100% de ses transactions sont réalisées.
+     */
+    protected function checkPlanningCompletion(Transaction $transaction): void
+    {
+        if (! $transaction->planned_transaction_id) {
+            return;
+        }
+
+        $plannedTx = $transaction->plannedTransaction;
+        if (! $plannedTx || ! $plannedTx->planning_id) {
+            return;
+        }
+
+        $planning = Planning::with('plannedTransactions')->find($plannedTx->planning_id);
+        if (! $planning) {
+            return;
+        }
+
+        // Vérifie si TOUTES les transactions du planning sont exécutées
+        $allCompleted = $planning->plannedTransactions->every(function ($pt) {
+            return $pt->statut === 'realise' || $pt->is_executed;
+        });
+
+        $planning->update([
+            'statut' => $allCompleted ? 'realise' : 'en_attente',
+        ]);
+    }
+
+    /**
+     * Correction Problème 9 :
+     * Gestion des alertes aux seuils de 50% et 90% consommés.
+     */
     protected function verifierSeuilAlerte(User $user): void
     {
-        if ($user->solde_initial <= 0) {
+        $soldeInitial = (float) $user->solde_initial;
+        if ($soldeInitial <= 0) {
             return;
         }
 
-        $seuilMontant = $user->solde_initial * ($user->seuil_alerte / 100);
+        $soldeActuel = (float) $user->solde_actuel;
+        $ratioRestant = $soldeActuel / $soldeInitial;
 
-        // Solde encore au-dessus du seuil : rien à signaler.
-        if ($user->solde_actuel > $seuilMontant) {
-            return;
+        // 1. Alerte Seuil Critique : 90% consommé (10% ou moins restant)
+        if ($ratioRestant <= 0.10) {
+            $dejaAlerteCritique = $user->notifications()
+                ->where('type', 'seuil_critique_90')
+                ->where('lue', false)
+                ->exists();
+
+            if (! $dejaAlerteCritique) {
+                $this->notificationService->creer(
+                    $user->id,
+                    "Alerte Solde Critique (90% utilisé)",
+                    "Attention : Votre solde actuel est inférieur à 10% de votre solde initial !",
+                    "seuil_critique_90"
+                );
+            }
         }
+        // 2. Alerte Seuil Intermédiaire : 50% consommé (entre 10% et 50% restant)
+        elseif ($ratioRestant <= 0.50) {
+            $dejaAlerte50 = $user->notifications()
+                ->where('type', 'seuil_avertissement_50')
+                ->where('lue', false)
+                ->exists();
 
-        // Évite de spammer une notification à chaque transaction tant que
-        // l'utilisateur n'a pas encore lu la précédente alerte de seuil bas.
-        $dejaAlerte = $user->notifications()
-            ->where('type', 'seuil_bas')
-            ->where('lue', false)
-            ->exists();
-
-        if (! $dejaAlerte) {
-            $this->notificationService->alerteSeuilBas($user);
+            if (! $dejaAlerte50) {
+                $this->notificationService->creer(
+                    $user->id,
+                    "Alerte Solde 50%",
+                    "Attention, vous avez consommé la moitié (50%) de votre solde initial.",
+                    "seuil_avertissement_50"
+                );
+            }
         }
     }
 }
