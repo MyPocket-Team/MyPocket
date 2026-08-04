@@ -44,7 +44,9 @@ function editTransaction(id) {
   router.push({ name: "add-transaction", query: { edit: id } });
 }
 
+// Correction Problème 7 : Formatage lisible de la date du jour du groupe
 function formatDate(dateStr) {
+  if (!dateStr) return "";
   const date = new Date(dateStr);
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
@@ -59,11 +61,10 @@ async function fetchTransactions() {
     transactions.value = list.map((t) => ({
       ...t,
       categorie: t.categorie?.nom || "Autre",
-      date: t.date_transaction,
-      dateLabel: new Date(t.date_transaction).toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "short",
-      }),
+      // Correction Problème 7 : Utilisation de date_brute transmise par la Resource Laravel (ou extraction du jour YYYY-MM-DD)
+      dateBrute: t.date_brute || (t.date_transaction ? t.date_transaction.split(' ')[0] : ""),
+      dateLabel: t.date_transaction, // Affichage avec heure reçu du backend
+      sourceSaisie: t.source_saisie || t.source || "manuel",
     }));
   } catch (e) {
     error.value = e.response?.data?.message || "Impossible de charger l'historique des transactions.";
@@ -89,7 +90,6 @@ async function deleteTransaction(id) {
 
 const filtered = computed(() => {
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
@@ -102,8 +102,8 @@ const filtered = computed(() => {
       (filterType.value === "Revenus" && t.type === "revenu");
 
     let matchPeriode = true;
-    if (filterPeriode.value && t.date) {
-      const date = new Date(t.date);
+    if (filterPeriode.value && t.dateBrute) {
+      const date = new Date(t.dateBrute);
       if (filterPeriode.value === "7 derniers jours") {
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         matchPeriode = date >= sevenDaysAgo && date <= now;
@@ -118,11 +118,13 @@ const filtered = computed(() => {
   });
 });
 
+// Correction Problème 7 : Regroupement strict par 'dateBrute' (YYYY-MM-DD) pour éliminer les doublons d'en-tête de date
 const grouped = computed(() => {
   const groups = {};
   filtered.value.forEach((t) => {
-    if (!groups[t.date]) groups[t.date] = [];
-    groups[t.date].push(t);
+    const key = t.dateBrute;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
   });
   return Object.entries(groups).sort((a, b) => (a[0] < b[0] ? 1 : -1));
 });
@@ -217,7 +219,11 @@ onMounted(() => {
             <!-- Details -->
             <div class="transaction-main">
               <span class="transaction-description">{{ t.description }}</span>
-              <span class="transaction-categorie">{{ t.categorie }}</span>
+              <span class="transaction-categorie">
+                {{ t.categorie }}
+                <!-- Correction Problème 7 : Badge de la source de saisie -->
+                <small class="source-tag">({{ t.sourceSaisie }})</small>
+              </span>
             </div>
 
             <!-- Side (Amount & Dropdown Menu) -->
@@ -282,7 +288,6 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-ink);
 }
-
 
 /* Controls Panel */
 .controls-panel {
@@ -441,6 +446,13 @@ onMounted(() => {
 .transaction-categorie {
   font-size: 0.72rem;
   color: var(--color-ink-soft);
+}
+
+.source-tag {
+  font-size: 0.68rem;
+  opacity: 0.75;
+  text-transform: lowercase;
+  margin-left: 4px;
 }
 
 .transaction-side {
