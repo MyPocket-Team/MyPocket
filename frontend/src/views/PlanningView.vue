@@ -24,7 +24,6 @@ const planningModalMode = ref("create");
 const editingPlanningId = ref(null);
 const formTitle = ref("");
 const formDescription = ref("");
-const formDate = ref("");
 
 const activePlanning = computed(() =>
   plannings.value.find((p) => p.id === activePlanningId.value) || null
@@ -134,9 +133,6 @@ async function confirmPlannedTransaction(tx, event) {
       localStorage.setItem("mypocket_solde", res.data.solde_actuel.toString());
     }
 
-    // Le planning parent peut être passé automatiquement à "réalisé" côté
-    // backend si c'était la dernière transaction planifiée en attente :
-    // on rafraîchit la liste pour que l'en-tête reflète le nouveau statut.
     await fetchPlannings();
   } catch (e) {
     await alertDialog(e.response?.data?.message || "Impossible de réaliser la transaction.");
@@ -144,8 +140,6 @@ async function confirmPlannedTransaction(tx, event) {
   }
 }
 
-// Vrai si la date d'échéance de la transaction planifiée tombe aujourd'hui,
-// pour mettre en évidence les transactions "à traiter maintenant".
 function isDueToday(tx) {
   if (!tx.date_echeance) return false;
   const echeance = new Date(tx.date_echeance);
@@ -164,17 +158,11 @@ watch(activePlanningId, (newId) => {
     plannedTransactions.value = [];
   }
 
-  // Garde l'URL synchronisée avec la sélection, pour que le sous-menu
-  // "Planning Budget" de la sidebar principale (App.vue) puisse la lire
-  // et la surligner correctement.
   if (String(route.query.planning || "") !== String(newId || "")) {
     router.replace({ query: { ...route.query, planning: newId || undefined } });
   }
 });
 
-// Le sous-menu de la sidebar principale navigue vers /planning?planning=<id> ;
-// comme Vue Router réutilise cette instance de composant (même route), on
-// écoute le changement de query pour refléter la sélection sans reload.
 watch(
   () => route.query.planning,
   (newVal) => {
@@ -184,7 +172,6 @@ watch(
     }
   }
 );
-
 
 const statutLabels = {
   en_attente: "En attente",
@@ -228,7 +215,6 @@ function openCreatePlanningModal() {
   editingPlanningId.value = null;
   formTitle.value = "";
   formDescription.value = "";
-  formDate.value = "";
   showPlanningModal.value = true;
 }
 
@@ -238,7 +224,6 @@ function openEditPlanningModal() {
   editingPlanningId.value = activePlanning.value.id;
   formTitle.value = activePlanning.value.titre;
   formDescription.value = activePlanning.value.description || "";
-  formDate.value = activePlanning.value.date_prevue ? activePlanning.value.date_prevue.slice(0, 10) : "";
   showPlanningModal.value = true;
 }
 
@@ -312,12 +297,6 @@ function formatDateFr(dateStr) {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function formatShortDate(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 onMounted(() => {
   fetchPlannings();
   fetchCategories();
@@ -350,7 +329,7 @@ onMounted(() => {
     </header>
 
     <div class="planning-workspace">
-      <!-- Plannings sidebar (liste des plannings) -->
+      <!-- Plannings sidebar -->
       <aside class="plannings-sidebar" :class="{ 'plannings-sidebar--open': planningsPanelOpen }">
         <div class="plannings-sidebar-top">
           <span class="plannings-sidebar-title">Mes plannings</span>
@@ -597,8 +576,6 @@ onMounted(() => {
             ></textarea>
           </div>
 
-
-
           <div class="modal-form-actions">
             <button type="button" class="cancel-btn" @click="closePlanningModal">Annuler</button>
             <button type="submit" class="save-btn-modal">
@@ -769,9 +746,6 @@ onMounted(() => {
 }
 
 @media (min-width: 768px) {
-  /* Sur desktop, la sélection d'un planning se fait depuis le sous-menu de
-     la sidebar principale (App.vue) — cette liste interne ne sert qu'au
-     panneau mobile. */
   .plannings-sidebar {
     display: none;
   }
