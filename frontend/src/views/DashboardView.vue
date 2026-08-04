@@ -1,15 +1,17 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import api from "../services/api";
 import NotificationBell from "../components/NotificationBell.vue";
 
 const router = useRouter();
 const solde = ref(0);
+const soldeInitial = ref(0);
 const userName = ref("Astride");
 
 const recentTransactions = ref([]);
 const monthlyStats = ref({ income: 0, expenses: 0 });
+const categoriesStats = ref([]);
 
 async function loadDashboardData() {
   const profileRaw = localStorage.getItem("mypocket_profile");
@@ -22,12 +24,19 @@ async function loadDashboardData() {
     const overviewRes = await api.get("/dashboard/overview");
     const overview = overviewRes.data;
     solde.value = parseFloat(overview.solde_actuel || 0);
+    soldeInitial.value = parseFloat(overview.solde_initial || 0);
+    
     monthlyStats.value = {
       income: parseFloat(overview.total_revenus_mois || 0),
       expenses: parseFloat(overview.total_depenses_mois || 0)
     };
+    
+    if (overview.categories) {
+      categoriesStats.value = overview.categories;
+    }
+
     localStorage.setItem("mypocket_solde", solde.value.toString());
-    localStorage.setItem("mypocket_initial_solde", overview.solde_initial.toString());
+    localStorage.setItem("mypocket_initial_solde", soldeInitial.value.toString());
 
     const txRes = await api.get("/transactions");
     const txList = txRes.data.data || txRes.data;
@@ -37,6 +46,8 @@ async function loadDashboardData() {
       montant: parseFloat(t.montant),
       type: t.type,
       categorie: t.categorie?.nom || "Autre",
+      categorie_id: t.categorie_id,
+      solde_apres: parseFloat(t.solde_apres || 0),
       date: t.date_transaction,
       dateLabel: new Date(t.date_transaction).toLocaleDateString("fr-FR", {
         day: "numeric",
@@ -47,6 +58,43 @@ async function loadDashboardData() {
     console.error("Error loading dashboard data", e);
   }
 }
+
+// 1. Calcul dynamique et exact des pourcentages par catégorie (Dépenses)
+const categoriesCalcul = computed(() => {
+  const totalDepenses = monthlyStats.value.expenses;
+  if (totalDepenses <= 0 || !categoriesStats.value.length) return [];
+
+  return categoriesStats.value.map((cat) => {
+    const totalCat = parseFloat(cat.total || 0);
+    return {
+      id: cat.id,
+      name: cat.nom || cat.name,
+      total: totalCat,
+      percentage: ((totalCat / totalDepenses) * 100).toFixed(1),
+      color: cat.couleur || "#3b82f6"
+    };
+  }).filter((c) => c.total > 0);
+});
+
+// 2. Structuration des données du graphique intégrant le Solde Initial
+const soldeChartData = computed(() => {
+  const labels = ["Initial", ...recentTransactions.value.map((t) => t.dateLabel || t.date)];
+  const data = [soldeInitial.value, ...recentTransactions.value.map((t) => t.solde_apres)];
+
+  return {
+    labels,
+    datasets: [
+      {
+        label: "Évolution du Solde (FCFA)",
+        data,
+        borderColor: "#10b981",
+        backgroundColor: "rgba(16, 185, 129, 0.1)",
+        fill: true,
+        tension: 0.3
+      }
+    ]
+  };
+});
 
 onMounted(() => {
   loadDashboardData();
@@ -285,10 +333,6 @@ function goTo(routeName) {
   gap: 24px;
 }
 
-/* Les items d'une grille CSS ont un min-width:auto implicite (basé sur le
-   contenu qui ne peut pas se réduire), donc sans ce reset une transaction
-   avec une longue description peut élargir la colonne entière au lieu de
-   se faire tronquer par l'ellipsis, et fait déborder la page à l'horizontale. */
 .main-column,
 .side-column {
   min-width: 0;
