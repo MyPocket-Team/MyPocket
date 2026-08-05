@@ -189,7 +189,8 @@ async function ptxStartAudio() {
         const formData = new FormData();
         formData.append("audio", audioBlob, "recording.webm");
         const res = await api.post("/audios/upload", formData, {
-          headers: { "Content-Type": "multipart/form-data" }
+          headers: { "Content-Type": "multipart/form-data" },
+          timeout: 90000,
         });
         ptxPollStatus(res.data.traitement_id, true);
       } catch (e) {
@@ -227,7 +228,8 @@ async function ptxHandleFileChange(event) {
     const formData = new FormData();
     formData.append("photo", file);
     const res = await api.post("/recus/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 90000,
     });
     ptxPollStatus(res.data.traitement_id, false);
   } catch (e) {

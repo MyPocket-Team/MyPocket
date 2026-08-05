@@ -34,6 +34,11 @@ WORKDIR /var/www
 COPY . .
 COPY --from=vendor /app/vendor/ /var/www/vendor/
 
+# Limites d'upload/mémoire/temps d'exécution : sans ce fichier, PHP retombe sur ses
+# valeurs par défaut (upload_max_filesize=2M, post_max_size=8M) qui rejettent
+# silencieusement les photos prises avec l'appareil photo d'un téléphone.
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
+
 EXPOSE 8000
 
 # Démarrage :

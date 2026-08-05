@@ -257,8 +257,11 @@ async function startAudio() {
       try {
         const formData = new FormData();
         formData.append("audio", audioBlob, "recording.webm");
+        // Timeout allongé : l'upload (surtout depuis un mobile) + la conversion ffmpeg
+        // + l'appel Gemini se font maintenant en une seule requête synchrone.
         const res = await api.post("/audios/upload", formData, {
-          headers: { "Content-Type": "multipart/form-data" }
+          headers: { "Content-Type": "multipart/form-data" },
+          timeout: 90000,
         });
         pollStatus(res.data.traitement_id, true);
       } catch (e) {
@@ -298,8 +301,10 @@ async function handleFileChange(event) {
   try {
     const formData = new FormData();
     formData.append("photo", file);
+    // Timeout allongé : upload (mobile) + analyse Gemini synchrone du reçu.
     const res = await api.post("/recus/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 90000,
     });
     pollStatus(res.data.traitement_id, false);
   } catch (e) {
